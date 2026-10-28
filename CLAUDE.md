@@ -197,11 +197,12 @@ Multiusuário, ranking, login, pedal de bumbo, MIDI, baquetas reais, leitura de 
 ## Estado atual (atualizar a cada sessão de trabalho)
 
 - [x] Fase 1 (15/10): One-Page, XRD v1.0, Plano v1.0, backlog do Trello, Apresentação 1
-- [ ] Etapa 0 (29/10): repositório e deploy
-- [ ] Etapa 0 (29/10): câmera espelhada
-- [ ] Etapa 0 (29/10): MediaPipe com duas mãos
+- [x] Etapa 0 (29/10): repositório e deploy. https://github.com/Luca-Matos/airbeat, publicado em https://luca-matos.github.io/airbeat/ (PR #1)
+- [~] Etapa 0 (29/10): câmera espelhada. Código e testes prontos (PR #2); falta teste manual em PC e celular
+- [~] Etapa 0 (29/10): MediaPipe com duas mãos. Código pronto (PR #3); falta confirmar com mãos reais o alinhamento dos pontos e o FPS (meta 24+) nos aparelhos
 - [ ] Etapa 0 (29/10): wireframes
 - Etapa em andamento: Etapa 0
+- Revisão pendente: PRs #1, #2 e #3 foram mesclados antes da revisão (exceção para a reunião de 29/10). Precisam ser revisados e testados pelo Luigi antes de os cartões irem para Concluído.
 - Decisões em aberto: Canvas 2D vs A-Frame (até 05/11); ponto de controle da mão (palma vs ponta do indicador); disparo no ponto mais baixo vs por limiar de velocidade.
 - Cartões em andamento (máx. 2 por pessoa): [preencher]
-- Bugs conhecidos: [preencher]
+- Bugs conhecidos: nenhum registrado. FPS no Chrome headless (~5, GPU emulada) não vale como medição.
