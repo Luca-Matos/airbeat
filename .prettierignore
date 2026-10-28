@@ -1,0 +1,7 @@
+dist/
+coverage/
+public/
+docs/projeto/
+docs/professora/
+package-lock.json
+CLAUDE.md
