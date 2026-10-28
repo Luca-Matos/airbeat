@@ -4,14 +4,32 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="description" content="Bateria virtual em realidade aumentada. Toque com as mãos." />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>AirBeat</title>
   </head>
   <body>
     <main id="app">
-      <section id="intro" class="screen">
+      <div id="stage" hidden>
+        <video id="camera" class="mirrored" autoplay muted playsinline></video>
+        <p id="hint" class="hint" hidden></p>
+      </div>
+
+      <section id="screen-intro" class="screen">
         <h1>AirBeat</h1>
         <p>Toque bateria com as mãos, usando só a câmera.</p>
-        <p class="note">Versão em desenvolvimento.</p>
+        <button id="start" type="button">Começar</button>
+        <p class="note">O vídeo é processado só no seu aparelho. Nada é gravado ou enviado.</p>
+      </section>
+
+      <section id="screen-loading" class="screen" hidden>
+        <div class="spinner" aria-hidden="true"></div>
+        <p id="loading-text" role="status">Carregando…</p>
+      </section>
+
+      <section id="screen-error" class="screen" hidden>
+        <h2>Algo deu errado</h2>
+        <p id="error-text" role="alert"></p>
+        <button id="retry" type="button">Tentar de novo</button>
       </section>
     </main>
     <script type="module" src="/src/main.js"></script>
