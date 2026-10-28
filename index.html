@@ -11,7 +11,9 @@
     <main id="app">
       <div id="stage" hidden>
         <video id="camera" class="mirrored" autoplay muted playsinline></video>
-        <p id="hint" class="hint" hidden></p>
+        <canvas id="overlay"></canvas>
+        <p id="hint" class="hint" role="status" hidden></p>
+        <pre id="debug" class="debug" hidden></pre>
       </div>
 
       <section id="screen-intro" class="screen">
