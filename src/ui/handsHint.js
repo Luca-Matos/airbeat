@@ -50,5 +50,10 @@ export function createHandsHint(el) {
       el.hidden = text === null;
       if (text) el.textContent = text;
     },
+    /** Esconde o aviso (fora do jogo) e força reavaliar na próxima atualização. */
+    reset() {
+      shown = -1;
+      el.hidden = true;
+    },
   };
 }
