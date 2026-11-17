@@ -34,7 +34,7 @@ O XRD diz **como a experiência será**; o Plano diz **como vamos desenvolver**.
 | Linguagem | JavaScript (módulos ES) com tipos em JSDoc | Sem etapa extra de compilação; JSDoc ainda permite checagem no editor. Trocar para TypeScript só se o grupo concordar antes de o código crescer. |
 | Build e servidor | Vite | Servidor de desenvolvimento rápido e build estático para o GitHub Pages. |
 | Rastreamento | `@mediapipe/tasks-vision` (HandLandmarker) | Roda no navegador, gratuito, sem hardware. O AR.js não rastreia mãos e por isso não serve. |
-| Gráficos | Canvas 2D sobre o `<video>` | A cena é plana e 2D basta. A-Frame/Three.js só entram se o protótipo mostrar ganho real; decisão registrada no XRD até 05/11. |
+| Gráficos | Canvas 2D sobre o `<video>` | **Decidido em 17/11:** a cena é plana, o Canvas 2D é mais leve e o protótipo desenhou as 5 peças com brilho sem custo perceptível. A-Frame/Three.js descartados. Registrar no XRD. |
 | Áudio | Web Audio API pura | Controle fino do tempo (`AudioContext.currentTime`). Tone.js só se simplificar de verdade. |
 | Testes | Vitest (unidade e replay), Playwright opcional (fumaça) | Ver seção Testes. |
 | Hospedagem | GitHub Pages via GitHub Actions | HTTPS, necessário para a câmera fora do localhost. |
@@ -196,13 +196,18 @@ Multiusuário, ranking, login, pedal de bumbo, MIDI, baquetas reais, leitura de 
 
 ## Estado atual (atualizar a cada sessão de trabalho)
 
+Última atualização: 17/11/2026. Próxima entrega: Reunião de Controle de 19/11 (bateria completa e modo livre).
+
 - [x] Fase 1 (15/10): One-Page, XRD v1.0, Plano v1.0, backlog do Trello, Apresentação 1
 - [x] Etapa 0 (29/10): repositório e deploy. https://github.com/Luca-Matos/airbeat, publicado em https://luca-matos.github.io/airbeat/ (PR #1)
-- [~] Etapa 0 (29/10): câmera espelhada. Código e testes prontos (PR #2); falta teste manual em PC e celular
-- [~] Etapa 0 (29/10): MediaPipe com duas mãos. Código pronto (PR #3); falta confirmar com mãos reais o alinhamento dos pontos e o FPS (meta 24+) nos aparelhos
-- [ ] Etapa 0 (29/10): wireframes
-- Etapa em andamento: Etapa 0
-- Revisão pendente: PRs #1, #2 e #3 foram mesclados antes da revisão (exceção para a reunião de 29/10). Precisam ser revisados e testados pelo Luigi antes de os cartões irem para Concluído.
-- Decisões em aberto: Canvas 2D vs A-Frame (até 05/11); ponto de controle da mão (palma vs ponta do indicador); disparo no ponto mais baixo vs por limiar de velocidade.
-- Cartões em andamento (máx. 2 por pessoa): [preencher]
+- [~] Etapa 0: câmera espelhada (PR #2) e MediaPipe com duas mãos (PR #3). Falta teste manual em PC e celular (alinhamento dos pontos, FPS 24+)
+- [ ] Etapa 0: wireframes (atrasado; as telas de posicionamento e menu já existem em código e podem servir de base)
+- [~] Fase 2 (05/11, atrasada): detecção de golpe v1 (`feat/deteccao-golpe`), sons sintetizados (`feat/sons-pecas`), gravar/reproduzir landmarks no debug. Código e testes automáticos prontos; falta teste com mãos reais e 3 fixtures gravadas. Canvas 2D decidido em 17/11 (falta escrever no XRD)
+- [~] 19/11: 5 peças em arco (`feat/bateria-cinco-pecas`), metrônomo com BPM (`feat/metronomo`), posicionamento, menu e modo livre (`feat/modo-livre-menu`). Código pronto; falta medição de FPS e latência em 2 PCs (`docs/TESTES.md`). Celulares adiados por decisão de 17/11 (ver Controle de mudanças abaixo)
+- Etapa em andamento: recuperação da Fase 2 + entrega de 19/11
+- Revisão pendente: PRs #1 a #3 (Etapa 0) e os PRs empilhados de 17/11, nesta ordem: deteccao-golpe -> sons-pecas -> bateria-cinco-pecas -> metronomo -> modo-livre-menu -> docs/estado-atual-17-11. Mesclar de baixo para cima. Revisor: Luigi
+- Mudança a registrar no Plano (Controle de mudanças): teste em celular sai do critério de 19/11 e passa para a Fase 3 (26/11); em 19/11 a demonstração e as medições são só no computador (Chrome/Edge, `npm run dev`). Motivo: atraso da Fase 2 e foco no núcleo. Risco: problemas de desempenho no celular aparecem mais tarde.
+- Decisões tomadas: Canvas 2D (17/11).
+- Decisões em aberto: ponto de controle (palma, padrão, vs ponta do indicador: `HIT.controlPoint`); disparo por limiar vs ponto mais baixo (`HIT.mode`; comparar com as fixtures)
+- Próximos (Fase 3, 26/11): estrutura das lições, `scoring`, calibragem, lições 1 a 3, modo por toque ou clique
 - Bugs conhecidos: nenhum registrado. FPS no Chrome headless (~5, GPU emulada) não vale como medição.
