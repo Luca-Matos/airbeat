@@ -118,6 +118,31 @@ describe('hitDetector: modo stroke (padrão)', () => {
     expect(hits.map((h) => h.pieceId)).toEqual(['snare']);
   });
 
+  it('não toca com a mão subindo, mesmo dentro da peça', () => {
+    // Para no fundo da caixa (sem tocar: entrou devagar) e sobe rápido.
+    const pos = (t) => ({ x: 0.4, y: t < 500 ? 0.6 : Math.max(0.2, 0.6 - ((t - 500) / 1000) * 3) });
+    expect(run(sample(pos, { durationMs: 900 }), { mode: 'stroke' })).toHaveLength(0);
+  });
+
+  it('predição: toca antes de a baqueta entrar na peça, quando ela vai entrar', () => {
+    const frames = sample(stroke({ at: 100 }), { durationMs: 800 });
+    const [plain] = run(frames, { mode: 'stroke', predictMs: 0 });
+    const [early] = run(frames, { mode: 'stroke', predictMs: 40 });
+    expect(early.pieceId).toBe('snare');
+    expect(early.t).toBeLessThan(plain.t);
+  });
+
+  it('rearme: tremor no fundo do golpe não vira segundo golpe', () => {
+    // Golpe, depois tremor de 1 cm de tela a 12 Hz parado na caixa.
+    const pos = (t) =>
+      t < 400
+        ? stroke({ at: 100, upMs: 10000 })(t)
+        : { x: 0.4, y: 0.64 + 0.01 * Math.sin(t * 0.075) };
+    expect(
+      run(sample(pos, { durationMs: 2000 }), { mode: 'stroke', downVelocity: 0.5 }),
+    ).toHaveLength(1);
+  });
+
   it('mão que desliza devagar para dentro da peça não toca', () => {
     const slide = (t) => ({ x: 0.1 + Math.min(1, t / 1000) * 0.3, y: 0.6 });
     expect(run(sample(slide, { durationMs: 1500 }), { mode: 'stroke' })).toHaveLength(0);

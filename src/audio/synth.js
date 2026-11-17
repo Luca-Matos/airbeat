@@ -127,3 +127,29 @@ export function renderSound(recipe, sampleRate, seed = 1) {
   for (let i = 0; i < n; i++) mix[i] *= scale;
   return mix;
 }
+
+/**
+ * Folga do limitador: o WaveShaper só lê entradas de -1 a 1, então o sinal entra
+ * dividido por isto e a curva cobre de -LIMITER_HEADROOM a +LIMITER_HEADROOM.
+ */
+export const LIMITER_HEADROOM = 2;
+
+/**
+ * Curva do limitador suave para um WaveShaperNode: linear até `knee`, depois se
+ * aproxima de 1 sem passar (tanh). Vários golpes juntos ficam mais altos, não distorcidos.
+ * A entrada do nó deve vir dividida por LIMITER_HEADROOM.
+ * @param {number} knee 0 a 1
+ * @param {number} [size] pontos da curva
+ * @returns {Float32Array}
+ */
+export function softLimiterCurve(knee, size = 2049) {
+  const curve = new Float32Array(size);
+  const room = 1 - knee;
+  for (let i = 0; i < size; i++) {
+    const x = ((i / (size - 1)) * 2 - 1) * LIMITER_HEADROOM;
+    const a = Math.abs(x);
+    const y = a <= knee ? a : knee + room * Math.tanh((a - knee) / room);
+    curve[i] = Math.sign(x) * y;
+  }
+  return curve;
+}

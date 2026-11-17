@@ -15,6 +15,7 @@ import { toStage } from './render.js';
 export function createHandPipeline({ pieceAt, config = {} }) {
   const kind = config.controlPoint ?? HIT.controlPoint;
   const reach = config.stickReach ?? HIT.stickReach;
+  const params = { stickReach: reach, thumbOffset: config.thumbOffset ?? HIT.thumbOffset };
   let associate = createHandAssociation();
   const detector = createHitDetector({ pieceAt, config });
 
@@ -25,7 +26,7 @@ export function createHandPipeline({ pieceAt, config = {} }) {
      * @param {import('./render.js').View} view
      */
     process(t, hands, view) {
-      const points = hands.map((h) => toStage(controlPoint(h, kind, reach), view));
+      const points = hands.map((h) => toStage(controlPoint(h, kind, params), view));
       const tracked = associate(t, points);
       const hits = detector.update(t, tracked);
       // Base da baqueta (centro da palma) para o desenho, na mesma ordem de tracked.

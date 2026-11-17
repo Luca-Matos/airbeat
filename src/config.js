@@ -20,7 +20,11 @@ export const CAMERA = {
   /** Altura ideal pedida, em px. */
   idealHeight: 480,
   /** Quadros por segundo ideais pedidos à câmera. */
-  idealFrameRate: 30,
+  /**
+   * 60 quando a câmera aguenta: menos espera entre quadros = menos atraso no golpe.
+   * A maioria das webcams entrega 30; o valor real aparece no painel de debug.
+   */
+  idealFrameRate: 60,
 };
 
 /**
@@ -41,10 +45,14 @@ export const TRACKING = {
   numHands: 2,
   /** Confiança mínima (0 a 1) para detectar uma mão nova no quadro. Padrão do MediaPipe: 0.5. */
   minHandDetectionConfidence: 0.5,
-  /** Confiança mínima (0 a 1) de que a mão continua presente. Padrão: 0.5. */
-  minHandPresenceConfidence: 0.5,
-  /** Confiança mínima (0 a 1) para seguir a mão entre quadros sem redetectar. Padrão: 0.5. */
-  minTrackingConfidence: 0.5,
+  /**
+   * Confiança mínima (0 a 1) de que a mão continua presente. Padrão do MediaPipe: 0.5.
+   * 0.3 porque, na gravação de 17/11, a mão fechada (joinha) sumia parada 30 vezes em 23 s;
+   * reencontrar mão fechada é mais difícil que continuar seguindo.
+   */
+  minHandPresenceConfidence: 0.3,
+  /** Confiança mínima (0 a 1) para seguir a mão entre quadros sem redetectar. Padrão: 0.5 (ver acima). */
+  minTrackingConfidence: 0.3,
 };
 
 /**
@@ -63,19 +71,29 @@ export const HIT = {
   mode: 'stroke',
   /**
    * Ponto da mão que bate na peça:
-   * 'stick' (padrão): ponta da mão, na reta pulso -> nós dos dedos, a `stickReach` do pulso.
+   * 'thumb' (padrão): ponta do dedão, um pouco abaixo dela (`thumbOffset`). Pensado para a
+   *   mão fechada em posição de joinha, como quem segura uma baqueta (pedido do teste de 17/11).
+   * 'stick': ponta da mão, na reta pulso -> nós dos dedos, a `stickReach` do pulso.
    * 'knuckles': nós dos dedos (5, 9, 13, 17). 'palm': centro da palma (0, 5, 9, 13, 17), a v1.
    * 'indexTip': ponta do indicador (8).
    */
-  controlPoint: 'stick',
+  controlPoint: 'thumb',
+  /**
+   * Quanto o ponto desce da ponta do dedão em direção à junta do meio dele (0 = na ponta,
+   * 1 = na junta). 0.25 = "levemente abaixo da ponta".
+   */
+  thumbOffset: 0.25,
   /**
    * Alcance da baqueta em múltiplos da distância pulso -> nós dos dedos. 1 = nos nós;
    * 1.3 = um pouco além, onde ficam as falanges com a mão fechada. Medido em proporção da
    * própria mão, então vale para qualquer distância da câmera.
    */
   stickReach: 1.3,
-  /** Velocidade descendente que inicia um golpe, em alturas de palco por segundo. */
-  downVelocity: 1.0,
+  /**
+   * Velocidade descendente que inicia um golpe, em alturas de palco por segundo.
+   * 0.8 pegou mais golpes que 1.0 nas gravações de 17/11 sem aumentar os sem descida.
+   */
+  downVelocity: 0.8,
   /**
    * Abaixo desta velocidade (alturas de palco/s) a descida terminou. Bem menor que
    * downVelocity: a mão freando dentro da peça ainda está no mesmo golpe.
@@ -83,10 +101,25 @@ export const HIT = {
   strokeEndVelocity: 0.2,
   /** Duração máxima de uma descida, em ms. Depois disso conta como terminada. */
   strokeMaxMs: 400,
+  /**
+   * Predição, em ms (modo 'stroke'): durante a descida, toca se a baqueta VAI entrar numa
+   * peça dentro desse tempo, seguindo a velocidade atual. Adianta o som em até esse tempo
+   * para compensar o atraso da câmera; alto demais toca peças em que a mão para antes.
+   */
+  predictMs: 40,
   /** No modo 'velocity' (v1): velocidade de subida que rearma a mão, em alturas de palco/s. */
   rearmUpVelocity: 0.3,
-  /** Intervalo mínimo entre dois golpes da mesma mão, em ms. Evita disparo duplo. */
-  minIntervalMs: 120,
+  /**
+   * Intervalo mínimo entre dois golpes da mesma mão, em ms (100 ms = até 10 golpes/s por
+   * mão). A proteção principal contra disparo duplo é o rearme por subida (rearmRise).
+   */
+  minIntervalMs: 100,
+  /**
+   * Depois de um golpe, quanto a baqueta precisa subir (alturas de palco) a partir do ponto
+   * mais baixo para valer o próximo. Maior que o tremor da mão parada (~0,02), menor que o
+   * curso de um golpe rápido (~0,05 ou mais).
+   */
+  rearmRise: 0.03,
   /** Se dois quadros da mesma mão estão mais distantes que isso (ms), a velocidade recomeça do zero. */
   maxFrameGapMs: 150,
   /**
@@ -111,6 +144,11 @@ export const HAND_MATCH = {
 export const AUDIO = {
   /** Volume geral (0 a 1) aplicado depois de todos os sons. */
   masterGain: 0.9,
+  /**
+   * Limitador suave: até este nível (0 a 1) o som passa igual; acima, é comprimido aos
+   * poucos em vez de estourar quando várias peças tocam juntas. Sem atraso (WaveShaper).
+   */
+  limiterKnee: 0.7,
   /** Pedido ao navegador: menor latência possível, mesmo gastando mais CPU. */
   latencyHint: 'interactive',
 };
@@ -370,6 +408,10 @@ export const DEBUG = {
   panelRefreshMs: 250,
   /** Casas decimais dos pontos gravados (4 = 0,1 px numa imagem de 1000 px), para o arquivo ficar pequeno. */
   recordDecimals: 4,
+  /** Quantas amostras entram na mediana de atraso mostrada no painel. */
+  latencySamples: 60,
+  /** Dois golpes de mãos diferentes com até esta distância (ms) contam como simultâneos. */
+  simultaneousMs: 50,
   /** Duração máxima de uma gravação, em ms, para não encher a memória se esquecerem ligada. */
   recordMaxMs: 120000,
 };

@@ -63,7 +63,7 @@ describe('controlPoint', () => {
     expect(tip.y).toBeCloseTo(0.8 - 1.3 * 0.2);
     // A base é o centro da palma (inclui o pulso), abaixo da ponta.
     expect(base.y).toBeGreaterThan(tip.y);
-    expect(controlPoint(h, 'stick', 1.3)).toEqual(tip);
+    expect(controlPoint(h, 'stick', { stickReach: 1.3 })).toEqual(tip);
     expect(controlPoint(h, 'knuckles').y).toBeCloseTo(0.6);
   });
 

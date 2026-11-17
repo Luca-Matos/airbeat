@@ -20,9 +20,11 @@ export function createMonotonicClock(minStepMs = 1) {
 }
 
 /**
- * Chama onFrame(timestampMs) uma vez por quadro novo do vídeo, até stop().
+ * Chama onFrame(timestampMs, metadata) uma vez por quadro novo do vídeo, até stop().
+ * metadata vem do requestVideoFrameCallback (tem captureTime no Chrome); no
+ * requestAnimationFrame é undefined.
  * @param {HTMLVideoElement} video
- * @param {(timestampMs: number) => void} onFrame
+ * @param {(timestampMs: number, metadata?: { captureTime?: number }) => void} onFrame
  * @param {(nowMs: number) => number} clock
  * @returns {() => void} stop
  */
@@ -32,11 +34,11 @@ export function startFrameLoop(video, onFrame, clock) {
   const useVideoCallback = 'requestVideoFrameCallback' in video;
   let lastVideoTime = -1;
 
-  const tick = (now) => {
+  const tick = (now, metadata) => {
     if (!running) return;
     if (useVideoCallback || video.currentTime !== lastVideoTime) {
       lastVideoTime = video.currentTime;
-      onFrame(clock(now));
+      onFrame(clock(now), metadata);
     }
     schedule();
   };

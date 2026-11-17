@@ -2,8 +2,14 @@
 import './style.css';
 import { createAudioEngine } from './audio/engine.js';
 import { CameraError, startCamera } from './camera.js';
-import { HIT, POSITIONING, VIDEO_FIT } from './config.js';
-import { createDebugPanel, createReplaySource, downloadJson, pickJsonFile } from './debug.js';
+import { CAMERA, DEBUG, HIT, POSITIONING, VIDEO_FIT } from './config.js';
+import {
+  createDebugPanel,
+  createReplaySource,
+  createRollingMedian,
+  downloadJson,
+  pickJsonFile,
+} from './debug.js';
 import { layoutKit, pieceAt } from './drumKit.js';
 import { createMonotonicClock, startFrameLoop } from './frameLoop.js';
 import { createHandPipeline } from './handPipeline.js';
@@ -97,7 +103,24 @@ const recorder = createLandmarkRecorder();
 let replay = null;
 /** @type {null | { t: number, view: import('./render.js').View }} */
 let lastFrame = null;
-const counters = { left: 0, right: 0, /** @type {Record<string, number>} */ byPiece: {} };
+const counters = {
+  left: 0,
+  right: 0,
+  /** golpes das duas mãos com até DEBUG.simultaneousMs entre eles */
+  together: 0,
+  /** @type {Record<string, number>} */ byPiece: {},
+  /** @type {Record<number, number>} ms do último golpe de cada mão */ lastByHand: {},
+};
+
+// Medição de atraso. O Chrome informa em captureTime quando a câmera capturou o quadro
+// (mesmo relógio do performance.now), então dá para medir câmera -> detecção e
+// câmera -> som tocado. Falta só a saída do áudio, que o navegador estima à parte.
+const camToDetect = createRollingMedian(DEBUG.latencySamples);
+const camToSound = createRollingMedian(DEBUG.latencySamples);
+/** @type {number | undefined} captureTime do quadro em processamento */
+let frameCaptureTime;
+/** @type {number | undefined} FPS que a câmera de fato entregou */
+let cameraFps;
 
 /**
  * Cria o áudio. Tem que rodar de forma síncrona dentro do clique (antes de qualquer
@@ -149,6 +172,7 @@ async function start() {
       once: true,
     });
   }
+  cameraFps = video.srcObject.getVideoTracks()[0]?.getSettings().frameRate;
   stage.hidden = false;
   stopLoop = startFrameLoop(video, onFrame, clock);
   enterPosition();
@@ -196,8 +220,12 @@ function readHands(timestampMs) {
   return { hands, detectMs: performance.now() - t0 };
 }
 
-/** @param {number} timestampMs */
-function onFrame(timestampMs) {
+/**
+ * @param {number} timestampMs
+ * @param {{ captureTime?: number }} [metadata]
+ */
+function onFrame(timestampMs, metadata) {
+  frameCaptureTime = replay ? undefined : metadata?.captureTime;
   let frame;
   try {
     frame = readHands(timestampMs);
@@ -207,6 +235,7 @@ function onFrame(timestampMs) {
     return;
   }
   const { hands, detectMs } = frame;
+  if (frameCaptureTime) camToDetect.add(performance.now() - frameCaptureTime);
 
   /** @type {import('./render.js').View} */
   const view = {
@@ -286,7 +315,13 @@ function onHit(hit, tracked) {
   if (!piece) return;
   // Tocar já, sem agendar: cada ms aqui é latência que o usuário sente.
   audio?.play(/** @type {any} */ (piece.sound));
+  if (frameCaptureTime) camToSound.add(performance.now() - frameCaptureTime);
   lastHitAt[piece.id] = hit.t;
+  const other = Object.entries(counters.lastByHand).some(
+    ([id, t]) => Number(id) !== hit.handId && hit.t - t <= DEBUG.simultaneousMs,
+  );
+  if (other) counters.together++;
+  counters.lastByHand[hit.handId] = hit.t;
   const x = tracked.find((h) => h.id === hit.handId)?.point.x ?? 0.5;
   if (x < 0.5) counters.left++;
   else counters.right++;
@@ -304,14 +339,25 @@ function debugLines(states, now) {
       (s) =>
         `mão ${s.id}: vy ${s.vy.toFixed(2)}/s · ${s.pieceId ?? '-'}${s.armed ? '' : ' · desarmada'}`,
     ),
-    `golpes: esq ${counters.left} · dir ${counters.right} · ` +
+    `golpes: esq ${counters.left} · dir ${counters.right} · juntos ${counters.together} · ` +
       (pieces.map((p) => `${p.label} ${counters.byPiece[p.id] ?? 0}`).join(' ') || '-'),
   ];
-  if (audio) {
-    lines.push(`áudio: ${audio.ctx.state} · saída ~${audio.outputLatencyMs().toFixed(0)} ms`);
-  } else {
-    lines.push('áudio: indisponível');
-  }
+  const out = audio?.outputLatencyMs();
+  lines.push(
+    audio ? `áudio: ${audio.ctx.state} · saída ~${out.toFixed(0)} ms` : 'áudio: indisponível',
+  );
+  const cd = camToDetect.read();
+  const cs = camToSound.read();
+  const fmt = (/** @type {number | null} */ v) => (v === null ? '?' : v.toFixed(0));
+  lines.push(
+    `câmera ${cameraFps ? cameraFps.toFixed(0) : '?'} FPS (pedido ${CAMERA.idealFrameRate}) · ` +
+      `captura→detecção ${fmt(cd)} ms`,
+  );
+  lines.push(
+    cs === null
+      ? 'atraso do golpe: dê alguns golpes para medir'
+      : `atraso do golpe: captura→som ${fmt(cs)} ms + saída ${fmt(out ?? null)} ms ≈ ${fmt(cs + (out ?? 0))} ms`,
+  );
   if (recorder.recording) lines.push(`● gravando ${(recorder.elapsed(now) / 1000).toFixed(1)} s`);
   if (replay) lines.push('▶ reproduzindo gravação');
   return lines;
@@ -321,6 +367,8 @@ function resetCounters() {
   counters.left = 0;
   counters.right = 0;
   counters.byPiece = {};
+  counters.together = 0;
+  counters.lastByHand = {};
 }
 
 function toggleRecording() {

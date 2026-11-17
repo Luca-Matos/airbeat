@@ -29,8 +29,9 @@ Checklist preenchido a cada rodada de testes, um bloco por dispositivo. Mínimo:
 
 Abra com `?debug=1` no fim do link para ver o painel. Teclas com o painel aberto: **D** esconde,
 **R** grava landmarks, **P** reproduz uma gravação, **Z** zera os contadores. Ajuste ao vivo:
-**[** e **]** mudam o alcance da baqueta, **,** e **.** o limiar de velocidade, **K** troca o ponto
-da mão (stick, knuckles, palm, indexTip) e **O** o modo (stroke, lowestPoint, velocity). No modo livre:
+**[** e **]** descem e sobem o ponto que bate (no dedão) ou mudam o alcance (na baqueta), **,** e
+**.** o limiar de velocidade, **9** e **0** a predição, **K** troca o ponto da mão (thumb, stick,
+knuckles, palm, indexTip) e **O** o modo (stroke, lowestPoint, velocity). No modo livre:
 **M** liga o metrônomo, **+**/**−** mudam o BPM, **Esc** volta ao menu.
 
 1. **Abrir e posicionar.** Clique em Começar e permita a câmera. A tela "Posicione-se" deve
@@ -92,3 +93,47 @@ nova mirando com a ponta da mão, a uns 1 m da câmera.
 
 Mudanças feitas: modo `stroke`, baqueta desenhada da palma até a ponta, aviso de "perto demais"
 no posicionamento e ajuste ao vivo pelo painel.
+
+### 17/11 (2ª rodada) · Luca · mesmo PC · gravação `airbeat-landmarks-2026-11-17-22-37-14.json`
+
+Impressão: "melhorou, mas ainda um pouco mal posicionado". O ideal seria o ponto no dedão, com a mão
+fechada em posição de joinha, levemente abaixo da ponta. Pedidos: ver quantos golpes dá para fazer
+ao mesmo tempo e diminuir o atraso.
+
+- Distância corrigida: tamanho da mão 0,19 (antes 0,36). Pose de joinha em 99% dos quadros.
+- A baqueta pela reta pulso -> nós dos dedos saía para fora da mão quando o punho ficava de lado.
+  O dedão (ponto 4, um quarto do caminho em direção ao ponto 3) fica sempre no topo do punho e
+  treme tanto quanto os nós dos dedos (mediana de 4,7 px contra 3,9 px).
+- Só uma mão foi vista em 35% dos quadros. A mão sumia **parada**, longe da borda: 30 perdas em
+  23 s. É o MediaPipe perdendo a mão fechada. Confiança de presença e de seguimento baixou de 0,5
+  para 0,3.
+
+Quantos golpes dá para fazer (simulação, uma mão sobre a caixa):
+
+| Golpes por segundo, por mão | 25 FPS | 30 FPS | 60 FPS |
+| --------------------------- | ------ | ------ | ------ |
+| até 8                       | 100%   | 100%   | 100%   |
+| 9                           | 89%    | 92%    | 97%    |
+| 10                          | 75%    | 90%    | 88%    |
+| 12                          | 58%    | 67%    | 71%    |
+
+- Duas mãos ao mesmo tempo (no mesmo quadro) tocam as duas peças. O painel conta como "juntos".
+  O limite é de 2 mãos (`TRACKING.numHands`). O áudio toca quantos sons forem preciso juntos, com
+  um limitador suave para não estourar.
+- Intervalo mínimo baixou de 120 para 100 ms (até 10 golpes/s por mão). Contra disparo duplo
+  entrou o rearme por subida (3% da tela), que derrubou os pares suspeitos de 4 para 1 na 1ª
+  gravação.
+
+Atraso medido no Chrome com a GPU deste notebook (Intel Iris Xe) e câmera falsa:
+
+| Etapa                                              | Tempo     |
+| -------------------------------------------------- | --------- |
+| Detecção (MediaPipe, GPU)                          | ~23 ms    |
+| Captura do quadro até o fim da detecção            | ~30 ms    |
+| Saída de áudio (PipeWire, buffer de 1024 amostras) | ~45 ms    |
+| Espera pelo próximo quadro da câmera (a 30 FPS)    | 0 a 33 ms |
+
+Mudanças contra o atraso: predição de 40 ms (toca quando a baqueta vai entrar na peça), câmera
+pedida a 60 FPS (vale se a webcam aguentar; o painel mostra o real) e medição de verdade no painel
+("atraso do golpe: captura→som + saída"). Pedir menos latência ao navegador não mudou nada: o total
+de áudio ficou em ~45 ms em todas as opções.

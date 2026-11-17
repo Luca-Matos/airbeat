@@ -32,6 +32,30 @@ export function createFrameStats(windowMs) {
 }
 
 /**
+ * Mediana das últimas `size` amostras. Puro. Mediana e não média: uma travada
+ * isolada não distorce a medida de atraso.
+ * @param {number} size
+ */
+export function createRollingMedian(size) {
+  /** @type {number[]} */
+  const values = [];
+  return {
+    /** @param {number} v */
+    add(v) {
+      values.push(v);
+      if (values.length > size) values.shift();
+    },
+    /** @returns {number | null} */
+    read() {
+      if (!values.length) return null;
+      const s = [...values].sort((a, b) => a - b);
+      const m = s.length >> 1;
+      return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+    },
+  };
+}
+
+/**
  * Lê ?debug=0/1 da URL; sem o parâmetro, usa o padrão do config.
  * @param {string} search
  */
@@ -82,7 +106,7 @@ export function createDebugPanel(el, handlers = {}) {
         `${info.delegate} · ${info.videoWidth}x${info.videoHeight} · mãos ${info.hands}`,
         ...(info.extra ?? []),
         'teclas: D painel · R gravar · P reproduzir · Z zerar',
-        'ajuste: [ ] alcance · , . limiar · K ponto da mão · O modo',
+        'ajuste: [ ] ponto · , . limiar · 9 0 predição · K ponto da mão · O modo',
       ].join('\n');
     },
   };
