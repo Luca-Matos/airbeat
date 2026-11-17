@@ -100,6 +100,26 @@ export const AUDIO = {
   latencyHint: 'interactive',
 };
 
+/** Metrônomo (src/audio/metronome.js). */
+export const METRONOME = {
+  /** Andamento inicial, em batidas por minuto. Lento o bastante para iniciantes. */
+  defaultBpm: 80,
+  /** Andamento mínimo aceito, em BPM. */
+  minBpm: 40,
+  /** Andamento máximo aceito, em BPM. */
+  maxBpm: 200,
+  /** Quanto os botões - e + mudam o andamento, em BPM. */
+  bpmStep: 5,
+  /** Batidas por compasso; a primeira é acentuada. */
+  beatsPerBar: 4,
+  /** Quanto à frente o agendador marca as batidas, em ms. Maior = mais robusto a travadas, mais lento para reagir a mudanças. */
+  lookaheadMs: 100,
+  /** Intervalo do setInterval que acorda o agendador, em ms. Precisa ser bem menor que lookaheadMs. */
+  timerIntervalMs: 25,
+  /** Espera antes da primeira batida, em ms, para o agendador começar com folga. */
+  startDelayMs: 100,
+};
+
 /**
  * Receitas dos sons, sintetizados no código (src/audio/synth.js). Nenhum arquivo de
  * áudio externo, então não há licença de terceiros. Cada som soma camadas:
