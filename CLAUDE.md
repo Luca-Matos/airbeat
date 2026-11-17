@@ -196,13 +196,16 @@ Multiusuário, ranking, login, pedal de bumbo, MIDI, baquetas reais, leitura de 
 
 ## Estado atual (atualizar a cada sessão de trabalho)
 
+Última atualização: 17/11/2026. Próxima entrega: Reunião de Controle de 19/11 (bateria completa e modo livre).
+
 - [x] Fase 1 (15/10): One-Page, XRD v1.0, Plano v1.0, backlog do Trello, Apresentação 1
 - [x] Etapa 0 (29/10): repositório e deploy. https://github.com/Luca-Matos/airbeat, publicado em https://luca-matos.github.io/airbeat/ (PR #1)
-- [~] Etapa 0 (29/10): câmera espelhada. Código e testes prontos (PR #2); falta teste manual em PC e celular
-- [~] Etapa 0 (29/10): MediaPipe com duas mãos. Código pronto (PR #3); falta confirmar com mãos reais o alinhamento dos pontos e o FPS (meta 24+) nos aparelhos
-- [ ] Etapa 0 (29/10): wireframes
-- Etapa em andamento: Etapa 0
-- Revisão pendente: PRs #1, #2 e #3 foram mesclados antes da revisão (exceção para a reunião de 29/10). Precisam ser revisados e testados pelo Luigi antes de os cartões irem para Concluído.
-- Decisões em aberto: Canvas 2D vs A-Frame (até 05/11); ponto de controle da mão (palma vs ponta do indicador); disparo no ponto mais baixo vs por limiar de velocidade.
-- Cartões em andamento (máx. 2 por pessoa): [preencher]
+- [~] Etapa 0: câmera espelhada (PR #2) e MediaPipe com duas mãos (PR #3). Falta teste manual em PC e celular (alinhamento dos pontos, FPS 24+)
+- [ ] Etapa 0: wireframes (atrasado; as telas de posicionamento e menu já existem em código e podem servir de base)
+- [~] Fase 2 (05/11, atrasada): detecção de golpe v1 (`feat/deteccao-golpe`), sons sintetizados (`feat/sons-pecas`), gravar/reproduzir landmarks no debug. Código e testes automáticos prontos; falta teste com mãos reais, 3 fixtures gravadas e decisão Canvas 2D registrada no XRD
+- [~] 19/11: 5 peças em arco (`feat/bateria-cinco-pecas`), metrônomo com BPM (`feat/metronomo`), posicionamento, menu e modo livre (`feat/modo-livre-menu`). Código pronto; falta medição de FPS e latência em 2 PCs e 2 celulares (`docs/TESTES.md`)
+- Etapa em andamento: recuperação da Fase 2 + entrega de 19/11
+- Revisão pendente: PRs #1 a #3 (Etapa 0) e as branches de 17/11, empilhadas nesta ordem: deteccao-golpe -> sons-pecas -> bateria-cinco-pecas -> metronomo -> modo-livre-menu -> docs/estado-atual-17-11. Revisor: Luigi
+- Decisões em aberto: Canvas 2D vs A-Frame (proposta: Canvas 2D; registrar no XRD); ponto de controle (palma, padrão, vs ponta do indicador: `HIT.controlPoint`); disparo por limiar vs ponto mais baixo (`HIT.mode`; comparar com as fixtures)
+- Próximos (Fase 3, 26/11): estrutura das lições, `scoring`, calibragem, lições 1 a 3, modo por toque ou clique
 - Bugs conhecidos: nenhum registrado. FPS no Chrome headless (~5, GPU emulada) não vale como medição.
