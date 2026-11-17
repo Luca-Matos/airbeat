@@ -209,12 +209,94 @@ export const SOUNDS = {
 
 /** Desenho das mãos sobre o vídeo. */
 export const HAND_STYLE = {
-  /** Cor de cada mão, na ordem em que o MediaPipe as devolve (não é esquerda/direita). */
+  /** Cor do esqueleto de cada mão (só no debug), na ordem do MediaPipe (não é esquerda/direita). */
   colors: ['#33d6ff', '#ff5ca8'],
-  /** Raio de cada ponto, em px de tela (CSS). */
+  /** Raio de cada ponto do esqueleto, em px de tela (CSS). */
   pointRadius: 4,
   /** Espessura das linhas entre os pontos, em px de tela (CSS). */
   lineWidth: 2,
+  /** Raio do ponto de controle (a "baqueta"), em px de tela (CSS). */
+  stickRadius: 12,
+  /** Cor do ponto de controle. Branco para não confundir com a cor de nenhuma peça. */
+  stickColor: '#ffffff',
+};
+
+/**
+ * Bateria: 5 peças em arco em volta do usuário, em unidades de palco (0 a 1 da área
+ * visível). No espelho, a mão esquerda do usuário aparece à esquerda da tela, então o
+ * chimbal fica à esquerda e o prato à direita, como numa bateria real. O bumbo é um
+ * pad embaixo, tocado com a mão (pedal não é rastreável pela câmera frontal).
+ * Paleta provisória (cartão "Definir paleta"): cores saturadas e bem distintas.
+ */
+export const DRUM_KIT = {
+  pieces: [
+    {
+      id: 'hihat',
+      label: 'Chimbal',
+      sound: 'hihat',
+      color: '#ffd23f',
+      shape: 'circle',
+      x: 0.14,
+      y: 0.5,
+    },
+    {
+      id: 'snare',
+      label: 'Caixa',
+      sound: 'snare',
+      color: '#ff5c5c',
+      shape: 'circle',
+      x: 0.36,
+      y: 0.64,
+    },
+    { id: 'tom', label: 'Tom', sound: 'tom', color: '#3ddc97', shape: 'circle', x: 0.64, y: 0.64 },
+    {
+      id: 'crash',
+      label: 'Prato',
+      sound: 'crash',
+      color: '#4dabf7',
+      shape: 'circle',
+      x: 0.86,
+      y: 0.5,
+    },
+    // Retângulo: x/y são o centro, w/h a largura e a altura.
+    {
+      id: 'kick',
+      label: 'Bumbo',
+      sound: 'kick',
+      color: '#b388ff',
+      shape: 'rect',
+      x: 0.5,
+      y: 0.89,
+      w: 0.22,
+      h: 0.16,
+    },
+  ],
+  /** Raio das peças redondas, em fração do menor lado do palco (fica redonda em qualquer tela). */
+  radius: 0.13,
+  /** Teto do raio, em fração da largura do palco, para as peças não se sobreporem em tela retrato. */
+  maxRadiusOfWidth: 0.1,
+  /** Folga da zona de golpe além do desenho (1 = exatamente o desenho; 1.15 = 15% maior). */
+  hitMargin: 1.15,
+};
+
+/** Aparência das peças. */
+export const KIT_STYLE = {
+  /** Opacidade do preenchimento em repouso (0 a 1). Baixa para o usuário se ver por trás. */
+  fillAlpha: 0.22,
+  /** Opacidade do preenchimento no instante do golpe. */
+  hitFillAlpha: 0.8,
+  /** Opacidade do contorno. */
+  strokeAlpha: 0.9,
+  /** Espessura do contorno, em px CSS. */
+  lineWidth: 3,
+  /** Duração do brilho depois do golpe, em ms. */
+  flashMs: 180,
+  /** Quanto a peça cresce no golpe (1 = nada). */
+  hitScale: 1.08,
+  /** Desfoque do brilho, em px CSS. */
+  glowBlur: 28,
+  /** Fonte do nome das peças. */
+  labelFont: '600 15px system-ui, sans-serif',
 };
 
 /** Aviso de mãos fora do enquadramento. */
@@ -234,4 +316,8 @@ export const DEBUG = {
   statsWindowMs: 1000,
   /** Intervalo, em ms, entre atualizações do texto do painel (atualizar todo quadro pesa). */
   panelRefreshMs: 250,
+  /** Casas decimais dos pontos gravados (4 = 0,1 px numa imagem de 1000 px), para o arquivo ficar pequeno. */
+  recordDecimals: 4,
+  /** Duração máxima de uma gravação, em ms, para não encher a memória se esquecerem ligada. */
+  recordMaxMs: 120000,
 };
