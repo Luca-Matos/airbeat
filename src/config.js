@@ -1,6 +1,9 @@
 // Todas as constantes de ajuste do AirBeat ficam aqui, com unidade e motivo.
 // Os valores iniciais vêm do XRD e do CLAUDE.md e serão ajustados com testes.
 
+/** Prefixo dos arquivos estáticos (no Pages é /airbeat/). Fora do Vite (scripts Node) vale '/'. */
+const BASE_URL = import.meta.env?.BASE_URL ?? '/';
+
 /** Nome exibido e versão da interface. */
 export const APP_NAME = 'AirBeat';
 
@@ -29,9 +32,9 @@ export const VIDEO_FIT = 'cover';
 /** Rastreamento de mãos (MediaPipe HandLandmarker). */
 export const TRACKING = {
   /** Modelo servido pelo próprio app (public/models), para não depender de rede externa. */
-  modelPath: `${import.meta.env.BASE_URL}models/hand_landmarker.task`,
+  modelPath: `${BASE_URL}models/hand_landmarker.task`,
   /** Pasta do runtime wasm, copiada de node_modules por scripts/copy-mediapipe-wasm.js. */
-  wasmPath: `${import.meta.env.BASE_URL}mediapipe/wasm`,
+  wasmPath: `${BASE_URL}mediapipe/wasm`,
   /** Ordem de tentativa do processamento. Se a GPU falhar ao criar, cai para a CPU. */
   delegates: ['GPU', 'CPU'],
   /** Quantas mãos detectar no máximo. */
@@ -87,6 +90,121 @@ export const HAND_MATCH = {
   maxJump: 0.35,
   /** Tempo, em ms, que uma mão sumida ainda é lembrada antes de virar uma mão nova. */
   forgetAfterMs: 300,
+};
+
+/** Saída de áudio. */
+export const AUDIO = {
+  /** Volume geral (0 a 1) aplicado depois de todos os sons. */
+  masterGain: 0.9,
+  /** Pedido ao navegador: menor latência possível, mesmo gastando mais CPU. */
+  latencyHint: 'interactive',
+};
+
+/**
+ * Receitas dos sons, sintetizados no código (src/audio/synth.js). Nenhum arquivo de
+ * áudio externo, então não há licença de terceiros. Cada som soma camadas:
+ * - tone: oscilador com queda de altura (freq -> freqEnd, constante pitchDecayMs)
+ * - noise: ruído branco filtrado
+ * - metal: soma de ondas quadradas em frequências não harmônicas (timbre de prato)
+ * Tempos em ms, frequências em Hz. `gain` é o volume final relativo (0 a 1), aplicado
+ * depois de normalizar o pico. `drive` satura de leve (1 = sem saturação).
+ */
+const METAL_FREQS = [263, 400, 421, 474, 587, 845];
+export const SOUNDS = {
+  kick: {
+    durationMs: 500,
+    gain: 1,
+    drive: 1.6,
+    layers: [
+      {
+        type: 'tone',
+        wave: 'sine',
+        freq: 160,
+        freqEnd: 45,
+        pitchDecayMs: 35,
+        decayMs: 170,
+        gain: 1,
+      },
+      { type: 'noise', filter: { type: 'lowpass', freq: 3000, q: 0.7 }, decayMs: 4, gain: 0.25 },
+    ],
+  },
+  snare: {
+    durationMs: 320,
+    gain: 0.85,
+    drive: 1,
+    layers: [
+      {
+        type: 'tone',
+        wave: 'triangle',
+        freq: 200,
+        freqEnd: 175,
+        pitchDecayMs: 30,
+        decayMs: 60,
+        gain: 0.6,
+      },
+      { type: 'tone', wave: 'sine', freq: 330, decayMs: 40, gain: 0.3 },
+      { type: 'noise', filter: { type: 'highpass', freq: 1500, q: 0.7 }, decayMs: 85, gain: 0.9 },
+    ],
+  },
+  tom: {
+    durationMs: 550,
+    gain: 0.9,
+    drive: 1.2,
+    layers: [
+      {
+        type: 'tone',
+        wave: 'sine',
+        freq: 150,
+        freqEnd: 105,
+        pitchDecayMs: 90,
+        decayMs: 210,
+        gain: 1,
+      },
+      { type: 'noise', filter: { type: 'lowpass', freq: 2500, q: 0.7 }, decayMs: 12, gain: 0.15 },
+    ],
+  },
+  hihat: {
+    durationMs: 130,
+    gain: 0.55,
+    drive: 1,
+    layers: [
+      {
+        type: 'metal',
+        freqs: METAL_FREQS,
+        filter: { type: 'highpass', freq: 7000, q: 0.7 },
+        decayMs: 30,
+        gain: 1,
+      },
+      { type: 'noise', filter: { type: 'highpass', freq: 8000, q: 0.7 }, decayMs: 25, gain: 0.5 },
+    ],
+  },
+  crash: {
+    durationMs: 1800,
+    gain: 0.6,
+    drive: 1,
+    layers: [
+      {
+        type: 'metal',
+        freqs: METAL_FREQS,
+        filter: { type: 'highpass', freq: 5000, q: 0.7 },
+        decayMs: 550,
+        gain: 0.7,
+      },
+      { type: 'noise', filter: { type: 'highpass', freq: 4000, q: 0.7 }, decayMs: 650, gain: 1 },
+    ],
+  },
+  click: {
+    durationMs: 40,
+    gain: 0.6,
+    drive: 1,
+    layers: [{ type: 'tone', wave: 'sine', freq: 1000, decayMs: 8, gain: 1 }],
+  },
+  clickAccent: {
+    durationMs: 40,
+    gain: 0.8,
+    drive: 1,
+    layers: [{ type: 'tone', wave: 'sine', freq: 1600, decayMs: 8, gain: 1 }],
+  },
 };
 
 /** Desenho das mãos sobre o vídeo. */
