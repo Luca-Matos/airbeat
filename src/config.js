@@ -92,9 +92,11 @@ export const HIT = {
   stickReach: 1.3,
   /**
    * Velocidade descendente que INICIA uma descida, em alturas de palco por segundo.
-   * A descida só toca se for rápida (fastVelocity) ou tiver curso (minTravel).
+   * A descida só toca se for rápida (fastVelocity) ou tiver curso (minTravel). 0,3 em vez de
+   * 0,4 pega golpes lentos e suaves que perdiam o começo (gravação contada de 17/11: 4 -> 3
+   * faltas); custo: baixar a mão até uma peça a mais de 0,3/s para reposicionar pode tocar.
    */
-  downVelocity: 0.4,
+  downVelocity: 0.3,
   /**
    * Descida com pico acima disto (alturas de palco/s) toca na hora, sem esperar curso.
    * Era o limiar único até a 3ª rodada de 17/11.
@@ -136,6 +138,12 @@ export const HIT = {
    * o rearme barra acontece logo depois do golpe; 250 ms = até 4 golpes/s por mão sem subir.
    */
   rearmMaxMs: 250,
+  /**
+   * Idade mínima, em ms, da amostra usada para medir a velocidade. Evita velocidade inflada
+   * quando dois quadros chegam colados (16 ms em vez de 33 ms): na gravação contada de 17/11
+   * isso gerava golpes duplos (8 -> 5 duplos, sem perder golpe).
+   */
+  velocityWindowMs: 30,
   /** Se dois quadros da mesma mão estão mais distantes que isso (ms), a velocidade recomeça do zero. */
   maxFrameGapMs: 150,
   /**

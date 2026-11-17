@@ -18,6 +18,8 @@ import { HIT } from './config.js';
 
 /** Mãos que não aparecem por esse tempo (ms) têm o estado descartado. */
 const STATE_TTL_MS = 1000;
+/** Quanto do passado de cada mão fica guardado (ms); bem maior que velocityWindowMs. */
+const HISTORY_MS = 200;
 
 /**
  * @param {object} options
@@ -73,6 +75,19 @@ export function createHitDetector({ pieceAt, config = {} }) {
   }
 
   /**
+   * Velocidade contra a amostra mais recente com pelo menos velocityWindowMs de idade.
+   * Quadros que chegam colados (16 ms) inflavam a velocidade de uma tremida.
+   * @param {any} s
+   * @param {number} t
+   */
+  function velocity(s, t) {
+    let ref = s.hist[0];
+    for (const h of s.hist) if (t - h.t >= cfg.velocityWindowMs) ref = h;
+    const dt = (t - ref.t) / 1000;
+    return { vx: (s.point.x - ref.x) / dt, vy: (s.point.y - ref.y) / dt };
+  }
+
+  /**
    * @param {any} s
    * @param {{ x: number, y: number }} prev posição no quadro anterior
    * @param {number} t
@@ -106,7 +121,13 @@ export function createHitDetector({ pieceAt, config = {} }) {
     // Começo e fim da descida. O fim usa um limiar baixo (histerese): a mão freando
     // dentro da peça ainda é a mesma descida.
     if (!s.stroke && !s.needsRise && s.vy >= cfg.downVelocity) {
-      s.stroke = { since: t, peakVy: s.vy, used: false, lastPiece: null, topY: prev.y };
+      s.stroke = {
+        since: t,
+        peakVy: s.vy,
+        used: false,
+        lastPiece: null,
+        topY: prev.y,
+      };
     }
     if (!s.stroke) return;
     s.stroke.peakVy = Math.max(s.stroke.peakVy, s.vy);
@@ -127,13 +148,13 @@ export function createHitDetector({ pieceAt, config = {} }) {
     // antes, compensando parte do atraso da câmera.
     // Só enquanto desce: no quadro em que a descida acabou a mão já pode estar subindo.
     const target = s.pieceId ?? predictedZone(s);
-    if (!ended && target) s.stroke.sawPiece = true;
+    // Barrado pelo intervalo mínimo com a peça sob a baqueta: não toca atrasado ao parar.
+    if (!ended && target && !cooled) s.stroke.blocked = true;
     if (!ended && !s.stroke.used && target && cooled && deliberate(s)) fire(s, target, t, hits);
-    // A descida parou já dentro de uma peça que ela não tinha alcançado antes: golpe curto
-    // que só chega à peça no fundo do movimento. Toca agora (gravação de precisão de 17/11,
-    // bumbo). Se a peça já estava sob a baqueta e o golpe foi barrado (intervalo mínimo),
-    // não toca atrasado.
-    if (ended && !s.stroke.used && !s.stroke.sawPiece && s.pieceId && cooled && deliberate(s)) {
+    // A descida parou dentro de uma peça sem ter tocado: golpe curto que só chega à peça
+    // no fundo do movimento (gravação de precisão de 17/11, bumbo). Se foi barrado pelo
+    // intervalo mínimo, não toca atrasado.
+    if (ended && !s.stroke.used && !s.stroke.blocked && s.pieceId && cooled && deliberate(s)) {
       fire(s, s.pieceId, t, hits);
     }
     if (ended) s.stroke = null;
@@ -160,6 +181,8 @@ export function createHitDetector({ pieceAt, config = {} }) {
           stroke: null,
           needsRise: false,
           lowestSinceHit: 0,
+          /** @type {{ t: number, x: number, y: number }[]} posições recentes */
+          hist: [],
         };
         hands.set(id, s);
       }
@@ -172,6 +195,7 @@ export function createHitDetector({ pieceAt, config = {} }) {
         s.vx = 0;
         s.vy = 0;
         s.stroke = null;
+        s.hist = [{ t, x: s.point.x, y: s.point.y }];
         s.pieceId = pieceAt(s.point);
         continue;
       }
@@ -179,9 +203,10 @@ export function createHitDetector({ pieceAt, config = {} }) {
       const prev = s.point;
       const a = cfg.smoothingAlpha;
       const cur = { x: prev.x + a * (point.x - prev.x), y: prev.y + a * (point.y - prev.y) };
-      s.vx = (cur.x - prev.x) / (gap / 1000);
-      s.vy = (cur.y - prev.y) / (gap / 1000);
       s.point = cur;
+      ({ vx: s.vx, vy: s.vy } = velocity(s, t));
+      s.hist.push({ t, x: cur.x, y: cur.y });
+      while (s.hist.length && t - s.hist[0].t > HISTORY_MS) s.hist.shift();
       s.pieceId = zoneOf(prev, cur);
       step(s, prev, t, hits);
     }
