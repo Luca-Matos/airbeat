@@ -1,7 +1,7 @@
 // Camada fina sobre a Web Audio API: cria o AudioContext, gera os buffers de todos
 // os sons no carregamento e toca cada peça com um AudioBufferSourceNode novo.
 import { AUDIO, SOUNDS } from '../config.js';
-import { renderSound } from './synth.js';
+import { LIMITER_HEADROOM, renderSound, softLimiterCurve } from './synth.js';
 
 /** @typedef {keyof typeof SOUNDS} SoundId */
 
@@ -19,8 +19,13 @@ export function createAudioEngine(env = {}) {
   const ready = Promise.resolve(ctx.resume?.()).catch((err) => console.warn('Áudio suspenso', err));
 
   const master = ctx.createGain();
-  master.gain.value = AUDIO.masterGain;
-  master.connect(ctx.destination);
+  // Dividido pela folga do limitador; a curva devolve o nível original (ver synth.js).
+  master.gain.value = AUDIO.masterGain / LIMITER_HEADROOM;
+  // WaveShaper não tem atraso de análise, diferente do DynamicsCompressor (~6 ms).
+  const limiter = ctx.createWaveShaper();
+  limiter.curve = softLimiterCurve(AUDIO.limiterKnee);
+  master.connect(limiter);
+  limiter.connect(ctx.destination);
 
   /** @type {Record<string, AudioBuffer>} */
   const buffers = {};

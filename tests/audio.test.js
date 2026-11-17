@@ -1,7 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import { SOUNDS } from '../src/config.js';
 import { createAudioEngine } from '../src/audio/engine.js';
-import { biquad, renderSound, seededRandom } from '../src/audio/synth.js';
+import {
+  biquad,
+  LIMITER_HEADROOM,
+  renderSound,
+  seededRandom,
+  softLimiterCurve,
+} from '../src/audio/synth.js';
 
 const SR = 48000;
 
@@ -53,6 +59,29 @@ describe('renderSound', () => {
   });
 });
 
+describe('softLimiterCurve', () => {
+  // Simula o WaveShaper: entrada já dividida pela folga, índice linear em [-1, 1].
+  const shape = (curve, signal) => {
+    const input = Math.max(-1, Math.min(1, signal / LIMITER_HEADROOM));
+    return curve[Math.round(((input + 1) / 2) * (curve.length - 1))];
+  };
+  const curve = softLimiterCurve(0.7);
+
+  it('não muda o volume de um golpe sozinho abaixo do joelho', () => {
+    for (const v of [0.1, 0.5, 0.69, -0.4]) expect(shape(curve, v)).toBeCloseTo(v, 2);
+  });
+
+  it('vários golpes juntos (soma até 2) nunca passam de 1 e continuam crescendo', () => {
+    let prev = 0;
+    for (const v of [0.8, 1, 1.4, 1.9]) {
+      const y = shape(curve, v);
+      expect(y).toBeLessThan(1);
+      expect(y).toBeGreaterThan(prev);
+      prev = y;
+    }
+  });
+});
+
 describe('synth: peças auxiliares', () => {
   it('seededRandom fica entre 0 e 1', () => {
     const r = seededRandom(42);
@@ -96,6 +125,9 @@ function fakeAudioContext() {
     }
     createGain() {
       return { gain: { value: 0 }, connect: vi.fn() };
+    }
+    createWaveShaper() {
+      return { curve: null, connect: vi.fn() };
     }
     createBuffer(channels, length, rate) {
       return { channels, length, rate, copyToChannel: vi.fn() };

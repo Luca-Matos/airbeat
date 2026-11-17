@@ -33,3 +33,16 @@ describe('debugEnabledFromUrl', () => {
     expect(debugEnabledFromUrl('?debug=1')).toBe(true);
   });
 });
+
+describe('createRollingMedian', () => {
+  it('mediana das últimas amostras, ignorando uma travada isolada', async () => {
+    const { createRollingMedian } = await import('../src/debug.js');
+    const m = createRollingMedian(5);
+    expect(m.read()).toBeNull();
+    [40, 42, 300, 41, 43].forEach((v) => m.add(v));
+    expect(m.read()).toBe(42);
+    m.add(44);
+    m.add(45);
+    expect(m.read()).toBe(44);
+  });
+});

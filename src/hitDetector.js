@@ -49,6 +49,17 @@ export function createHitDetector({ pieceAt, config = {} }) {
     out.push({ handId: s.id, pieceId, t, velocity: s.stroke?.peakVy ?? s.vy });
     s.lastHitAt = t;
     if (s.stroke) s.stroke.used = true;
+    // Rearme: o próximo golpe só começa depois que a baqueta subir rearmRise acima do
+    // ponto mais baixo alcançado depois deste. Tremor no fundo do golpe não sobe tanto.
+    s.lowestSinceHit = s.point.y;
+    s.needsRise = true;
+  }
+
+  /** @param {any} s */
+  function predictedZone(s) {
+    if (cfg.predictMs <= 0 || s.vy <= 0) return null;
+    const lead = cfg.predictMs / 1000;
+    return pieceAt({ x: s.point.x + s.vx * lead, y: s.point.y + s.vy * lead });
   }
 
   /**
@@ -71,9 +82,14 @@ export function createHitDetector({ pieceAt, config = {} }) {
       return;
     }
 
+    if (s.needsRise) {
+      s.lowestSinceHit = Math.max(s.lowestSinceHit, s.point.y);
+      if (s.point.y <= s.lowestSinceHit - cfg.rearmRise) s.needsRise = false;
+    }
+
     // Começo e fim da descida. O fim usa um limiar baixo (histerese): a mão freando
     // dentro da peça ainda é a mesma descida.
-    if (!s.stroke && s.vy >= cfg.downVelocity) {
+    if (!s.stroke && !s.needsRise && s.vy >= cfg.downVelocity) {
       s.stroke = { since: t, peakVy: s.vy, used: false, lastPiece: null };
     }
     if (!s.stroke) return;
@@ -90,8 +106,12 @@ export function createHitDetector({ pieceAt, config = {} }) {
       return;
     }
 
-    // 'stroke': primeira peça tocada durante a descida.
-    if (!s.stroke.used && s.pieceId && cooled) fire(s, s.pieceId, t, hits);
+    // 'stroke': primeira peça tocada durante a descida. Com predição, vale também a peça
+    // onde a baqueta vai estar daqui a predictMs, seguindo a velocidade atual: o som sai
+    // antes, compensando parte do atraso da câmera.
+    // Só enquanto desce: no quadro em que a descida acabou a mão já pode estar subindo.
+    const target = s.pieceId ?? predictedZone(s);
+    if (!ended && !s.stroke.used && target && cooled) fire(s, target, t, hits);
     if (ended) s.stroke = null;
   }
 
@@ -108,7 +128,15 @@ export function createHitDetector({ pieceAt, config = {} }) {
     for (const { id, point } of tracked) {
       let s = hands.get(id);
       if (!s) {
-        s = { id, lastHitAt: -Infinity, lastHitPiece: null, armed: true, stroke: null };
+        s = {
+          id,
+          lastHitAt: -Infinity,
+          lastHitPiece: null,
+          armed: true,
+          stroke: null,
+          needsRise: false,
+          lowestSinceHit: 0,
+        };
         hands.set(id, s);
       }
       const gap = s.point ? t - s.seenAt : Infinity;
@@ -117,6 +145,7 @@ export function createHitDetector({ pieceAt, config = {} }) {
       if (gap > cfg.maxFrameGapMs || gap <= 0) {
         // Sem quadro anterior confiável: só registra a posição; velocidade zera.
         s.point = { x: point.x, y: point.y };
+        s.vx = 0;
         s.vy = 0;
         s.stroke = null;
         s.pieceId = pieceAt(s.point);
@@ -126,6 +155,7 @@ export function createHitDetector({ pieceAt, config = {} }) {
       const prev = s.point;
       const a = cfg.smoothingAlpha;
       const cur = { x: prev.x + a * (point.x - prev.x), y: prev.y + a * (point.y - prev.y) };
+      s.vx = (cur.x - prev.x) / (gap / 1000);
       s.vy = (cur.y - prev.y) / (gap / 1000);
       s.point = cur;
       s.pieceId = zoneOf(prev, cur);
@@ -142,7 +172,7 @@ export function createHitDetector({ pieceAt, config = {} }) {
         id: s.id,
         point: s.point,
         vy: s.vy,
-        armed: cfg.mode === 'velocity' ? s.armed : !s.stroke?.used,
+        armed: cfg.mode === 'velocity' ? s.armed : !s.needsRise,
         pieceId: s.pieceId,
       }));
   }
