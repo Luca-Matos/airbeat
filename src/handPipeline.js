@@ -4,7 +4,7 @@
 import { HIT } from './config.js';
 import { createHandAssociation } from './handAssociation.js';
 import { createHitDetector } from './hitDetector.js';
-import { controlPoint } from './landmarks.js';
+import { controlPoint, stickPoints } from './landmarks.js';
 import { toStage } from './render.js';
 
 /**
@@ -14,6 +14,7 @@ import { toStage } from './render.js';
  */
 export function createHandPipeline({ pieceAt, config = {} }) {
   const kind = config.controlPoint ?? HIT.controlPoint;
+  const reach = config.stickReach ?? HIT.stickReach;
   let associate = createHandAssociation();
   const detector = createHitDetector({ pieceAt, config });
 
@@ -24,10 +25,12 @@ export function createHandPipeline({ pieceAt, config = {} }) {
      * @param {import('./render.js').View} view
      */
     process(t, hands, view) {
-      const points = hands.map((h) => toStage(controlPoint(h, kind), view));
+      const points = hands.map((h) => toStage(controlPoint(h, kind, reach), view));
       const tracked = associate(t, points);
       const hits = detector.update(t, tracked);
-      return { tracked, hits, states: detector.states() };
+      // Base da baqueta (centro da palma) para o desenho, na mesma ordem de tracked.
+      const bases = hands.map((h) => toStage(stickPoints(h, reach).base, view));
+      return { tracked, bases, hits, states: detector.states() };
     },
     reset() {
       associate = createHandAssociation();

@@ -89,6 +89,41 @@ describe('hitDetector: uma mão', () => {
   });
 });
 
+describe('hitDetector: modo stroke (padrão)', () => {
+  // Desce rápido ACIMA da caixa e chega nela já freando: velocidade dentro da zona < limiar.
+  const braking = (t) => {
+    if (t < 100) return { x: 0.4, y: 0.2 };
+    if (t < 200) return { x: 0.4, y: 0.2 + (0.25 * (t - 100)) / 100 }; // 2,5/s, fora da peça
+    if (t < 400) return { x: 0.4, y: 0.45 + (0.12 * (t - 200)) / 200 }; // 0,6/s, entra na peça
+    return { x: 0.4, y: 0.57 };
+  };
+
+  it('toca quando a mão chega à peça já freando (a peça inteira vale)', () => {
+    const frames = sample(braking, { durationMs: 700 });
+    expect(run(frames, { mode: 'stroke' }).map((h) => h.pieceId)).toEqual(['snare']);
+    // A v1 só tocava se a velocidade dentro da peça passasse do limiar: perdia este golpe.
+    expect(run(frames, { mode: 'velocity' })).toHaveLength(0);
+  });
+
+  it('uma descida toca uma peça só, mesmo atravessando outra embaixo', () => {
+    const pieceAt2 = ({ x, y }) => {
+      if (x >= 0.3 && x <= 0.5 && y >= 0.4 && y <= 0.55) return 'snare';
+      if (x >= 0.3 && x <= 0.5 && y > 0.6 && y <= 0.8) return 'kick';
+      return null;
+    };
+    const det = createHitDetector({ pieceAt: pieceAt2, config: { mode: 'stroke' } });
+    const hits = sample(stroke({ at: 100, top: 0.2, bottom: 0.9, downMs: 250 }), {
+      durationMs: 900,
+    }).flatMap(({ t, point }) => det.update(t, [{ id: 1, point }]));
+    expect(hits.map((h) => h.pieceId)).toEqual(['snare']);
+  });
+
+  it('mão que desliza devagar para dentro da peça não toca', () => {
+    const slide = (t) => ({ x: 0.1 + Math.min(1, t / 1000) * 0.3, y: 0.6 });
+    expect(run(sample(slide, { durationMs: 1500 }), { mode: 'stroke' })).toHaveLength(0);
+  });
+});
+
 describe('hitDetector: duas mãos', () => {
   it('cada mão toca a sua peça de forma independente', () => {
     const left = stroke({ x: 0.4, at: 100 });

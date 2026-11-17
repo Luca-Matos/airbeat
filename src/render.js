@@ -164,14 +164,29 @@ export function drawKit(ctx, pieces, view, lastHitAt, now) {
 }
 
 /**
- * A "baqueta" de cada mão: o ponto de controle usado na detecção.
+ * A baqueta de cada mão: uma haste do centro da palma até a ponta, que é o ponto
+ * que bate na peça. Assim o usuário vê exatamente o que conta como golpe.
  * @param {CanvasRenderingContext2D} ctx
- * @param {{ point: { x: number, y: number } }[]} hands em unidades de palco
+ * @param {{ point: { x: number, y: number } }[]} hands ponta de cada mão, em unidades de palco
+ * @param {{ x: number, y: number }[]} bases centro da palma de cada mão, mesma ordem
  * @param {View} view
  */
-export function drawSticks(ctx, hands, view) {
+export function drawSticks(ctx, hands, bases, view) {
   ctx.save();
-  for (const { point } of hands) {
+  ctx.lineCap = 'round';
+  hands.forEach(({ point }, i) => {
+    const base = bases[i];
+    if (base) {
+      ctx.beginPath();
+      ctx.moveTo(base.x * view.width, base.y * view.height);
+      ctx.lineTo(point.x * view.width, point.y * view.height);
+      ctx.lineWidth = HAND_STYLE.stickWidth + 4;
+      ctx.strokeStyle = 'rgb(0 0 0 / 0.45)';
+      ctx.stroke();
+      ctx.lineWidth = HAND_STYLE.stickWidth;
+      ctx.strokeStyle = rgba(HAND_STYLE.stickColor, 0.8);
+      ctx.stroke();
+    }
     ctx.beginPath();
     ctx.arc(point.x * view.width, point.y * view.height, HAND_STYLE.stickRadius, 0, Math.PI * 2);
     ctx.fillStyle = rgba(HAND_STYLE.stickColor, 0.85);
@@ -179,6 +194,6 @@ export function drawSticks(ctx, hands, view) {
     ctx.lineWidth = 3;
     ctx.strokeStyle = 'rgb(0 0 0 / 0.5)';
     ctx.stroke();
-  }
+  });
   ctx.restore();
 }

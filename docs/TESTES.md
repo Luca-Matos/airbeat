@@ -28,7 +28,9 @@ Checklist preenchido a cada rodada de testes, um bloco por dispositivo. Mínimo:
 ## Roteiro da rodada de 19/11 (bateria completa)
 
 Abra com `?debug=1` no fim do link para ver o painel. Teclas com o painel aberto: **D** esconde,
-**R** grava landmarks, **P** reproduz uma gravação, **Z** zera os contadores. No modo livre:
+**R** grava landmarks, **P** reproduz uma gravação, **Z** zera os contadores. Ajuste ao vivo:
+**[** e **]** mudam o alcance da baqueta, **,** e **.** o limiar de velocidade, **K** troca o ponto
+da mão (stick, knuckles, palm, indexTip) e **O** o modo (stroke, lowestPoint, velocity). No modo livre:
 **M** liga o metrônomo, **+**/**−** mudam o BPM, **Esc** volta ao menu.
 
 1. **Abrir e posicionar.** Clique em Começar e permita a câmera. A tela "Posicione-se" deve
@@ -58,4 +60,35 @@ O FPS do Chrome headless (~5) não vale como medição.
 
 ## Registros
 
-_Nenhum registro ainda._
+### 17/11 · Luca · PC, Chrome, janela 1896x926 · gravação `airbeat-landmarks-2026-11-17-22-24-54.json`
+
+Teste livre de 30 s, sem contagem anotada. Impressões: "um pouco de atraso, não é a pior coisa";
+o pior foi a posição da baqueta: só a palma de baixo contava, a mão tinha que vir numa posição
+estranha e só uma parte específica de cada peça funcionava.
+
+Análise da gravação (25,5 FPS, duas mãos em 83% dos quadros):
+
+- O ponto de controle da v1 (centro da palma, com o pulso) fica na parte de baixo da mão.
+- A v1 só tocava se a velocidade **dentro** da peça passasse do limiar. A mão freia ao chegar, por
+  isso só a parte de cima das peças funcionava.
+- Perto demais da câmera: a mão (pulso até a base do dedo médio) media 0,36 da altura da tela
+  (mediana). Ela ficava maior que as peças e o pulso saía por baixo da tela em parte dos golpes.
+  A janela larga corta 35% da imagem da câmera na vertical, o que aumenta o efeito.
+- Os golpes disparam de 70 a 100 ms **antes** do fundo do movimento. O atraso sentido vem da
+  câmera, do processamento e da saída de áudio, não de o detector esperar.
+
+Comparação na mesma gravação (53 descidas encontradas pelos nós dos dedos; "sem descida" =
+golpe sem descida correspondente, candidato a disparo falso):
+
+| Configuração                      | Golpes | Casaram com descida | Sem descida |
+| --------------------------------- | ------ | ------------------- | ----------- |
+| v1: velocity, palma, limiar 1,2   | 49     | 36                  | 13          |
+| stroke, palma, limiar 1,0         | 45     | 39                  | 6           |
+| stroke, nós dos dedos             | 41     | 36                  | 5           |
+| stroke, baqueta 1,3 (novo padrão) | 30     | 27                  | 3           |
+
+A baqueta pega menos aqui porque a gravação foi feita mirando com a palma. Precisa de gravação
+nova mirando com a ponta da mão, a uns 1 m da câmera.
+
+Mudanças feitas: modo `stroke`, baqueta desenhada da palma até a ponta, aviso de "perto demais"
+no posicionamento e ajuste ao vivo pelo painel.

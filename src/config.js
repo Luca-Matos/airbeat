@@ -55,16 +55,35 @@ export const TRACKING = {
  */
 export const HIT = {
   /**
-   * 'velocity': dispara quando a mão entra na peça descendo acima do limiar.
-   * 'lowestPoint': espera a mão parar de descer (onde a baqueta bateria de verdade).
-   * As duas ficam disponíveis para comparar com gravações; decisão em aberto.
+   * 'stroke': toca assim que a baqueta entra numa peça durante uma descida rápida (padrão).
+   * 'velocity': v1, só toca se a velocidade no quadro dentro da peça passar do limiar.
+   * 'lowestPoint': toca no fim da descida, na peça sob o ponto mais baixo (mais atraso).
+   * Comparação na gravação de 17/11: ver o PR do ajuste da baqueta.
    */
-  mode: 'velocity',
-  /** Ponto da mão usado como "baqueta": 'palm' (média de 0,5,9,13,17) ou 'indexTip' (8). */
-  controlPoint: 'palm',
-  /** Velocidade descendente mínima para contar como golpe, em alturas de palco por segundo. */
-  downVelocity: 1.2,
-  /** Velocidade de subida que rearma a mão depois de um golpe, em alturas de palco por segundo. */
+  mode: 'stroke',
+  /**
+   * Ponto da mão que bate na peça:
+   * 'stick' (padrão): ponta da mão, na reta pulso -> nós dos dedos, a `stickReach` do pulso.
+   * 'knuckles': nós dos dedos (5, 9, 13, 17). 'palm': centro da palma (0, 5, 9, 13, 17), a v1.
+   * 'indexTip': ponta do indicador (8).
+   */
+  controlPoint: 'stick',
+  /**
+   * Alcance da baqueta em múltiplos da distância pulso -> nós dos dedos. 1 = nos nós;
+   * 1.3 = um pouco além, onde ficam as falanges com a mão fechada. Medido em proporção da
+   * própria mão, então vale para qualquer distância da câmera.
+   */
+  stickReach: 1.3,
+  /** Velocidade descendente que inicia um golpe, em alturas de palco por segundo. */
+  downVelocity: 1.0,
+  /**
+   * Abaixo desta velocidade (alturas de palco/s) a descida terminou. Bem menor que
+   * downVelocity: a mão freando dentro da peça ainda está no mesmo golpe.
+   */
+  strokeEndVelocity: 0.2,
+  /** Duração máxima de uma descida, em ms. Depois disso conta como terminada. */
+  strokeMaxMs: 400,
+  /** No modo 'velocity' (v1): velocidade de subida que rearma a mão, em alturas de palco/s. */
   rearmUpVelocity: 0.3,
   /** Intervalo mínimo entre dois golpes da mesma mão, em ms. Evita disparo duplo. */
   minIntervalMs: 120,
@@ -75,10 +94,6 @@ export const HIT = {
    * 1 = sem suavização. Suavizar reduz tremor mas atrasa o golpe; começar sem e medir.
    */
   smoothingAlpha: 1,
-  /** No modo 'lowestPoint', tempo máximo (ms) esperando a mão parar antes de disparar mesmo assim. */
-  lowestPointMaxWaitMs: 200,
-  /** Velocidade (alturas de palco/s) abaixo da qual a descida é considerada parada no modo 'lowestPoint'. */
-  lowestPointStopVelocity: 0.15,
 };
 
 /** Associação das mãos entre quadros (não usamos o rótulo esquerda/direita do MediaPipe). */
@@ -235,8 +250,10 @@ export const HAND_STYLE = {
   pointRadius: 4,
   /** Espessura das linhas entre os pontos, em px de tela (CSS). */
   lineWidth: 2,
-  /** Raio do ponto de controle (a "baqueta"), em px de tela (CSS). */
+  /** Raio da ponta da baqueta (o ponto que bate), em px de tela (CSS). */
   stickRadius: 12,
+  /** Espessura da haste da baqueta, do centro da palma até a ponta, em px de tela (CSS). */
+  stickWidth: 6,
   /** Cor do ponto de controle. Branco para não confundir com a cor de nenhuma peça. */
   stickColor: '#ffffff',
 };
@@ -325,6 +342,13 @@ export const POSITIONING = {
   holdMs: 1500,
   /** Margem, em unidades de palco, que a mão precisa ter da borda para contar como "inteira". */
   edgeMargin: 0.02,
+  /**
+   * Tamanho máximo da mão (pulso -> base do dedo médio), em fração da altura do palco.
+   * Acima disso a pessoa está perto demais: a mão fica maior que as peças e sai da tela
+   * ao bater. Na gravação de 17/11 a mediana foi 0,36 (perto demais); ~0,2 equivale a
+   * cerca de 1 m de um notebook.
+   */
+  maxHandSize: 0.22,
 };
 
 /** Aviso de mãos fora do enquadramento. */

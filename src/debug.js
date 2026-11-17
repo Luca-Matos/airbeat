@@ -46,7 +46,7 @@ export function debugEnabledFromUrl(search) {
  * D mostra/esconde; com o painel visível, R grava/para landmarks, P reproduz
  * uma gravação e Z zera o contador de golpes.
  * @param {HTMLElement} el
- * @param {{ onRecordToggle?: () => void, onReplayRequest?: () => void, onResetCounters?: () => void }} [handlers]
+ * @param {{ onRecordToggle?: () => void, onReplayRequest?: () => void, onResetCounters?: () => void, onKey?: (key: string) => void }} [handlers]
  */
 export function createDebugPanel(el, handlers = {}) {
   const stats = createFrameStats(DEBUG.statsWindowMs);
@@ -60,6 +60,7 @@ export function createDebugPanel(el, handlers = {}) {
     if (key === 'r') handlers.onRecordToggle?.();
     if (key === 'p') handlers.onReplayRequest?.();
     if (key === 'z') handlers.onResetCounters?.();
+    handlers.onKey?.(key);
   });
 
   return {
@@ -81,6 +82,7 @@ export function createDebugPanel(el, handlers = {}) {
         `${info.delegate} · ${info.videoWidth}x${info.videoHeight} · mãos ${info.hands}`,
         ...(info.extra ?? []),
         'teclas: D painel · R gravar · P reproduzir · Z zerar',
+        'ajuste: [ ] alcance · , . limiar · K ponto da mão · O modo',
       ].join('\n');
     },
   };

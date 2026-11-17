@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   createPositionHold,
   handFullyVisible,
+  handSize,
   POSITION_MESSAGES,
   positionStatus,
 } from '../src/ui/positioning.js';
@@ -12,7 +13,20 @@ describe('positionStatus', () => {
     expect(positionStatus(1, true)).toBe('one');
     expect(positionStatus(2, false)).toBe('cut');
     expect(positionStatus(2, true)).toBe('ok');
-    for (const s of ['none', 'one', 'cut', 'ok']) expect(POSITION_MESSAGES[s]).toBeTruthy();
+    for (const s of ['none', 'one', 'cut', 'close', 'ok'])
+      expect(POSITION_MESSAGES[s]).toBeTruthy();
+  });
+});
+
+describe('perto demais', () => {
+  it('pede para se afastar quando a mão está grande demais na tela', () => {
+    const view = { width: 1896, height: 926 };
+    const hand = Array.from({ length: 21 }, () => ({ x: 0.5, y: 0.5 }));
+    hand[0] = { x: 0.5, y: 0.86 };
+    hand[9] = { x: 0.5, y: 0.5 };
+    expect(handSize(hand, view)).toBeCloseTo(0.36);
+    expect(positionStatus(2, true, handSize(hand, view))).toBe('close');
+    expect(positionStatus(2, true, 0.15)).toBe('ok');
   });
 });
 
