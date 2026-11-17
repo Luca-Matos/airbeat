@@ -168,3 +168,37 @@ Mudanças (layout v2 e baqueta):
 - Replay das gravações com o layout novo: caixa e tom praticamente iguais (2 golpes do tom foram
   para o prato e 1 a 2 da caixa para o chimbal). Chimbal, prato e bumbo precisam de gravação nova,
   porque estas foram feitas mirando o layout antigo.
+
+### 17/11 (4ª rodada) · Luca · mesmo PC · gravação `…23-18-46.json` (68 s, precisão e ritmo)
+
+Impressão: tentando tocar preciso e no ritmo, batendo continuamente, muitos golpes não pegaram, mesmo
+com o movimento na altura em que deveriam pegar. A posição da baqueta (pulso -> dedão) ficou boa.
+
+Duas mãos em 94% dos quadros. Com a configuração do PR #13, 109 de 181 descidas tocaram (60%). Por que
+as outras falharam:
+
+- 54 eram **lentas**: tocando preciso, o golpe fica curto e controlado (curso mediano de 4,7% da tela,
+  pico de 0,62/s, contra 11,6% e 1,44/s dos que tocavam). O limiar único de 0,8/s barrava esses golpes.
+- 7 golpes no bumbo pararam de 3 a 9% da tela **acima** dele, na altura da caixa e do tom.
+- Golpes no ritmo a partir da mão parada: depois de um golpe a mão escorregava para baixo devagar e
+  subia só ~1% antes do próximo; o rearme (subir 3%) barrava.
+
+Mudanças:
+
+- A descida começa em 0,4/s (`downVelocity`) e toca se for rápida (`fastVelocity` 0,8) ou tiver curso
+  de 3% da tela (`minTravel`). Tremor tem velocidade parecida, mas curso de 1 a 2%.
+- Se a descida para já dentro de uma peça que não tinha alcançado antes, toca nesse momento.
+- Rearme com prazo: depois de 250 ms do último golpe a mão volta a valer mesmo sem subir
+  (`rearmMaxMs`).
+- Bumbo subiu para a altura da caixa e do tom (y 0,66, alto 0,2); prato de 0,78 para 0,77.
+
+| Gravação                     | Antes (PR #13) | Agora | Golpes sem descida |
+| ---------------------------- | -------------- | ----- | ------------------ |
+| `…23-18-46` (precisão, 68 s) | 60%            | 78%   | 6 -> 8             |
+| `…23-06-38` (102 s)          | 73%            | 81%   | 15 -> 25           |
+| `…23-04-38` (34 s)           | 59%            | 72%   | 7 -> 12            |
+
+Por peça na gravação de precisão (agora): caixa 84%, bumbo 86%, tom 76%, chimbal 76%, prato 60% (só 10
+tentativas). "Descidas de referência" = descidas da ponta da baqueta com curso de 3% ou mais; sem a
+contagem real dos golpes, uma parte delas pode ser só reposicionamento da mão, e uma parte dos golpes
+sem descida pode ser golpe curto de verdade. Próximo passo: gravação com contagem anotada.

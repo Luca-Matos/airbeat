@@ -23,9 +23,28 @@ describe('hitDetector: uma mão', () => {
     expect(hits[0].velocity).toBeGreaterThan(1.2);
   });
 
-  it('descida lenta não dispara', () => {
-    const hits = run(sample(stroke({ at: 100, downMs: 900, upMs: 900 }), { durationMs: 2500 }));
+  it('descida muito lenta (pico abaixo de downVelocity) não dispara', () => {
+    // Pico = 0,35 * π / (2 * 1,6 s) ≈ 0,34/s: mão sendo reposicionada, não golpe.
+    const hits = run(sample(stroke({ at: 100, downMs: 1600, upMs: 1600 }), { durationMs: 3600 }));
     expect(hits).toHaveLength(0);
+  });
+
+  it('golpe curto e controlado (lento, mas com curso) toca', () => {
+    // Curso de 5% da tela em 130 ms: pico = 0,05 * π / (2 * 0,13 s) ≈ 0,6/s, abaixo de
+    // fastVelocity, como os golpes da gravação de precisão de 17/11.
+    const hits = run(
+      sample(stroke({ at: 100, top: 0.55, bottom: 0.6, downMs: 130, upMs: 200 }), {
+        durationMs: 600,
+      }),
+    );
+    expect(hits.map((h) => h.pieceId)).toEqual(['snare']);
+  });
+
+  it('tremor com o mesmo pico de velocidade, mas sem curso, não toca', () => {
+    // ±0,9% da tela a 12 Hz: pico ≈ 0,5/s medido em quadros de 60 FPS (acima de
+    // downVelocity), mas curso de 1,8%, abaixo de minTravel.
+    const tremor = (t) => ({ x: 0.4, y: 0.6 + 0.009 * Math.sin((2 * Math.PI * 12 * t) / 1000) });
+    expect(run(sample(tremor, { fps: 60, durationMs: 3000 }))).toHaveLength(0);
   });
 
   it('tremor parado dentro da peça não dispara', () => {
@@ -64,7 +83,7 @@ describe('hitDetector: uma mão', () => {
     for (const fps of [15, 30, 60]) {
       expect(run(sample(stroke({ at: 100 }), { fps, durationMs: 800 }))).toHaveLength(1);
       expect(
-        run(sample(stroke({ at: 100, downMs: 900, upMs: 900 }), { fps, durationMs: 2500 })),
+        run(sample(stroke({ at: 100, downMs: 1600, upMs: 1600 }), { fps, durationMs: 3600 })),
       ).toHaveLength(0);
     }
   });
@@ -116,6 +135,31 @@ describe('hitDetector: modo stroke (padrão)', () => {
       durationMs: 900,
     }).flatMap(({ t, point }) => det.update(t, [{ id: 1, point }]));
     expect(hits.map((h) => h.pieceId)).toEqual(['snare']);
+  });
+
+  it('golpe que só alcança a peça no fundo do movimento toca quando para', () => {
+    // Desce rápido de 0,3 até 0,52 (zona da caixa começa em 0,5) e para ali.
+    const frames = [0, 33, 66, 100, 133, 166, 200, 233].map((t, i) => ({
+      t,
+      point: { x: 0.4, y: [0.3, 0.3, 0.38, 0.46, 0.51, 0.52, 0.52, 0.52][i] },
+    }));
+    expect(run(frames, { mode: 'stroke', predictMs: 0 }).map((h) => h.pieceId)).toEqual(['snare']);
+  });
+
+  it('no ritmo, mão que escorrega depois do golpe e bate de novo sem subir 3% toca', () => {
+    // Caso da gravação de precisão (13,1 s): golpe, mão parada escorregando para baixo,
+    // sobe só 1% e bate forte de novo 600 ms depois.
+    const pos = (t) => {
+      if (t < 100) return { x: 0.4, y: 0.3 };
+      if (t < 200) return { x: 0.4, y: 0.3 + ((t - 100) / 100) * 0.25 }; // 1º golpe, até 0,55
+      if (t < 600) return { x: 0.4, y: 0.55 + ((t - 200) / 400) * 0.02 }; // escorrega até 0,57
+      if (t < 680) return { x: 0.4, y: 0.57 - ((t - 600) / 80) * 0.01 }; // sobe 1%
+      if (t < 740) return { x: 0.4, y: 0.56 + ((t - 680) / 60) * 0.07 }; // 2º golpe
+      return { x: 0.4, y: 0.63 };
+    };
+    const frames = sample(pos, { durationMs: 1000 });
+    expect(run(frames, { mode: 'stroke' })).toHaveLength(2);
+    expect(run(frames, { mode: 'stroke', rearmMaxMs: 1e9 })).toHaveLength(1);
   });
 
   it('não toca com a mão subindo, mesmo dentro da peça', () => {
