@@ -1,10 +1,11 @@
-// Alterna as telas de sobreposição (intro, carregando, erro). Uma por vez.
+// Alterna as telas de sobreposição. Uma por vez; posicionamento e menu ficam
+// sobre o vídeo, as outras cobrem tudo.
 
-const SCREEN_IDS = ['intro', 'loading', 'error'];
+const SCREEN_IDS = ['intro', 'loading', 'error', 'position', 'menu'];
 
 /**
  * Mostra só a tela pedida; `null` esconde todas (fica só o palco com o vídeo).
- * @param {'intro' | 'loading' | 'error' | null} name
+ * @param {'intro' | 'loading' | 'error' | 'position' | 'menu' | null} name
  */
 export function showScreen(name) {
   for (const id of SCREEN_IDS) {

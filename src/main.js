@@ -9,9 +9,15 @@ import { createMonotonicClock, startFrameLoop } from './frameLoop.js';
 import { createHandPipeline } from './handPipeline.js';
 import { createHandTracker } from './handTracker.js';
 import { createLandmarkRecorder, parseRecording } from './landmarkRecording.js';
-import { clear, drawHands, drawKit, drawSticks, fitCanvas } from './render.js';
+import { clear, drawHands, drawKit, drawSticks, fitCanvas, toStage } from './render.js';
 import { createHandsHint } from './ui/handsHint.js';
 import { createMetronomeControls } from './ui/metronomeControls.js';
+import {
+  createPositionHold,
+  handFullyVisible,
+  POSITION_MESSAGES,
+  positionStatus,
+} from './ui/positioning.js';
 import { showError, showLoading, showScreen } from './ui/screens.js';
 
 const stage = document.getElementById('stage');
@@ -25,12 +31,27 @@ const debugPanel = createDebugPanel(document.getElementById('debug'), {
   onResetCounters: resetCounters,
 });
 
-const metronome = createMetronomeControls(document.getElementById('toolbar'), () => audio);
+const toolbar = document.getElementById('toolbar');
+const positionText = document.getElementById('position-text');
+const positionProgress = document.getElementById('position-progress');
+const metronome = createMetronomeControls(toolbar, () => audio);
 window.addEventListener('keydown', (e) => {
-  if (e.ctrlKey || e.metaKey || e.altKey || stage.hidden) return;
+  if (e.ctrlKey || e.metaKey || e.altKey || mode !== 'free') return;
+  if (e.key === 'Escape') {
+    enterMenu();
+    return;
+  }
   // Tecla de atalho não pode disparar junto com o clique num botão focado.
   if (metronome.handleKey(e.key.toLowerCase())) e.preventDefault();
 });
+
+/**
+ * Tela atual enquanto a câmera está aberta. A câmera e o rastreamento seguem ligados
+ * nas três; só o modo livre desenha a bateria e toca.
+ * @type {'off' | 'position' | 'menu' | 'free'}
+ */
+let mode = 'off';
+const positionHold = createPositionHold();
 
 // O relógio vive fora da sessão: ao tentar de novo, o timestamp continua crescendo.
 const clock = createMonotonicClock();
@@ -112,9 +133,34 @@ async function start() {
     });
   }
   stage.hidden = false;
-  showScreen(null);
-  pipeline.reset();
   stopLoop = startFrameLoop(video, onFrame, clock);
+  enterPosition();
+}
+
+function enterPosition() {
+  mode = 'position';
+  metronome.stop();
+  toolbar.hidden = true;
+  hint.reset();
+  positionHold('none', 0);
+  showScreen('position');
+}
+
+function enterMenu() {
+  mode = 'menu';
+  metronome.stop();
+  toolbar.hidden = true;
+  hint.reset();
+  showScreen('menu');
+  document.getElementById('menu-free').focus();
+}
+
+function enterFreePlay() {
+  mode = 'free';
+  pipeline.reset();
+  audio?.resume();
+  toolbar.hidden = false;
+  showScreen(null);
 }
 
 /**
@@ -162,15 +208,19 @@ function onFrame(timestampMs) {
   if (recorder.recording && !recorder.add(timestampMs, hands)) toggleRecording();
 
   const { tracked, hits, states } = pipeline.process(timestampMs, hands, view);
-  for (const hit of hits) onHit(hit, tracked);
+  // Fora do modo livre a detecção roda (mantém a velocidade em dia), mas não toca.
+  if (mode === 'free') for (const hit of hits) onHit(hit, tracked);
 
   clear(ctx, view);
-  drawKit(ctx, pieces, view, lastHitAt, timestampMs);
-  if (debugPanel.visible) drawHands(ctx, hands, view);
+  if (mode === 'free') drawKit(ctx, pieces, view, lastHitAt, timestampMs);
+  if (debugPanel.visible || mode === 'position') drawHands(ctx, hands, view);
   drawSticks(ctx, tracked, view);
 
-  metronome.update();
-  hint.update(hands.length, timestampMs);
+  if (mode === 'position') updatePosition(hands, view, timestampMs);
+  if (mode === 'free') {
+    metronome.update();
+    hint.update(hands.length, timestampMs);
+  }
   debugPanel.update(timestampMs, detectMs, {
     hands: hands.length,
     delegate: replay ? 'gravação' : tracker.delegate,
@@ -178,6 +228,22 @@ function onFrame(timestampMs) {
     videoHeight: video.videoHeight,
     extra: debugLines(states, timestampMs),
   });
+}
+
+/**
+ * @param {{ x: number, y: number }[][]} hands
+ * @param {import('./render.js').View} view
+ * @param {number} now
+ */
+function updatePosition(hands, view, now) {
+  const allInside = hands.every((h) => handFullyVisible(h.map((p) => toStage(p, view))));
+  const status = positionStatus(hands.length, allInside);
+  const { progress, ready } = positionHold(status, now);
+  if (positionText.textContent !== POSITION_MESSAGES[status]) {
+    positionText.textContent = POSITION_MESSAGES[status];
+  }
+  positionProgress.style.width = `${Math.round(progress * 100)}%`;
+  if (ready) enterMenu();
 }
 
 /**
@@ -256,6 +322,8 @@ function fail(message) {
 }
 
 function stopSession() {
+  mode = 'off';
+  toolbar.hidden = true;
   metronome.stop();
   stopLoop?.();
   stopLoop = null;
@@ -268,6 +336,10 @@ function stopSession() {
 }
 
 document.getElementById('start').addEventListener('click', start);
+document.getElementById('position-skip').addEventListener('click', enterMenu);
+document.getElementById('menu-free').addEventListener('click', enterFreePlay);
+document.getElementById('menu-position').addEventListener('click', enterPosition);
+document.getElementById('to-menu').addEventListener('click', enterMenu);
 document.getElementById('retry').addEventListener('click', start);
 // O navegador suspende o áudio em segundo plano; ao voltar, retoma.
 document.addEventListener('visibilitychange', () => {

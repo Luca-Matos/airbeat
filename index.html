@@ -14,7 +14,8 @@
         <canvas id="overlay"></canvas>
         <p id="hint" class="hint" role="status" hidden></p>
         <pre id="debug" class="debug" hidden></pre>
-        <div id="toolbar" class="toolbar">
+        <div id="toolbar" class="toolbar" hidden>
+          <button id="to-menu" class="ghost" type="button">Menu</button>
           <div class="metronome" role="group" aria-label="Metrônomo">
             <button id="metro-toggle" class="ghost" type="button" aria-pressed="false">
               Metrônomo
@@ -43,6 +44,25 @@
       <section id="screen-loading" class="screen" hidden>
         <div class="spinner" aria-hidden="true"></div>
         <p id="loading-text" role="status">Carregando…</p>
+      </section>
+
+      <section id="screen-position" class="screen overlay overlay-top" hidden>
+        <div class="card">
+          <h2>Posicione-se</h2>
+          <p id="position-text" role="status">Levante as duas mãos na frente do corpo.</p>
+          <div class="progress" aria-hidden="true"><span id="position-progress"></span></div>
+          <button id="position-skip" class="ghost" type="button">Continuar mesmo assim</button>
+        </div>
+      </section>
+
+      <section id="screen-menu" class="screen overlay" hidden>
+        <div class="card">
+          <h2>O que vamos tocar?</h2>
+          <button id="menu-free" type="button">Modo livre</button>
+          <button id="menu-lessons" type="button" disabled>Lições (em breve)</button>
+          <button id="menu-position" class="ghost" type="button">Posicionar de novo</button>
+          <p class="note">Dica: no modo livre, Esc volta para este menu.</p>
+        </div>
       </section>
 
       <section id="screen-error" class="screen" hidden>

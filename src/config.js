@@ -319,6 +319,14 @@ export const KIT_STYLE = {
   labelFont: '600 15px system-ui, sans-serif',
 };
 
+/** Tela de posicionamento. */
+export const POSITIONING = {
+  /** Tempo, em ms, com as duas mãos inteiras na tela antes de seguir sozinho para o menu. */
+  holdMs: 1500,
+  /** Margem, em unidades de palco, que a mão precisa ter da borda para contar como "inteira". */
+  edgeMargin: 0.02,
+};
+
 /** Aviso de mãos fora do enquadramento. */
 export const HANDS_HINT = {
   /**
