@@ -67,12 +67,34 @@ describe('pieceAt', () => {
     expect(DRUM_KIT.hitMargin).toBeGreaterThanOrEqual(1);
   });
 
-  it('o bumbo é um retângulo embaixo', () => {
+  it('o bumbo fica no vão entre caixa e tom, abaixo delas, sem encostar nelas', () => {
+    for (const [w, h] of [
+      [1896, 926],
+      [1280, 720],
+      [1920, 1080],
+    ]) {
+      const p = Object.fromEntries(layoutKit(w, h).map((x) => [x.id, x]));
+      expect(p.kick.cx).toBeCloseTo(0.5);
+      expect(p.kick.cy).toBeGreaterThan(p.snare.cy);
+      // Descida vertical até o bumbo não passa pela zona de golpe da caixa nem do tom.
+      expect(p.kick.cx - p.kick.hw).toBeGreaterThan(p.snare.cx + p.snare.hw);
+      expect(p.kick.cx + p.kick.hw).toBeLessThan(p.tom.cx - p.tom.hw);
+      expect(pieceAt(layoutKit(w, h), { x: p.kick.cx, y: p.kick.cy })).toBe('kick');
+    }
+  });
+
+  it('com a mão em joinha, bater no bumbo não tira o pulso da tela', () => {
+    // O pulso fica ~0,26 da altura do palco abaixo do dedão (gravações de 17/11). O golpe
+    // dispara ao entrar na peça; batendo até o meio dela, o pulso continua na tela.
     const kick = byId.kick;
-    expect(kick.cy).toBeGreaterThan(0.75);
-    expect(pieceAt(pieces, { x: kick.cx + kick.hw * 0.95, y: kick.cy + kick.hh * 0.95 })).toBe(
-      'kick',
-    );
+    expect(kick.cy + 0.26).toBeLessThanOrEqual(1);
+  });
+
+  it('chimbal e prato ficam ao alcance (fora dos 20% das bordas) e são maiores', () => {
+    expect(byId.hihat.cx).toBeGreaterThanOrEqual(0.2);
+    expect(byId.crash.cx).toBeLessThanOrEqual(0.8);
+    expect(byId.hihat.hw).toBeGreaterThan(byId.snare.hw);
+    expect(byId.crash.hw).toBeGreaterThan(byId.snare.hw);
   });
 });
 

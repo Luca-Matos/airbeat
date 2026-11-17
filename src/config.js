@@ -71,18 +71,19 @@ export const HIT = {
   mode: 'stroke',
   /**
    * Ponto da mão que bate na peça:
-   * 'thumb' (padrão): ponta do dedão, um pouco abaixo dela (`thumbOffset`). Pensado para a
-   *   mão fechada em posição de joinha, como quem segura uma baqueta (pedido do teste de 17/11).
+   * 'thumb' (padrão): baqueta do pulso até a ponta do dedão; bate na ponta ou um pouco abaixo
+   *   (`thumbReach`). Pensado para a mão fechada em joinha, como quem segura uma baqueta
+   *   (pedido dos testes de 17/11).
    * 'stick': ponta da mão, na reta pulso -> nós dos dedos, a `stickReach` do pulso.
    * 'knuckles': nós dos dedos (5, 9, 13, 17). 'palm': centro da palma (0, 5, 9, 13, 17), a v1.
    * 'indexTip': ponta do indicador (8).
    */
   controlPoint: 'thumb',
   /**
-   * Quanto o ponto desce da ponta do dedão em direção à junta do meio dele (0 = na ponta,
-   * 1 = na junta). 0.25 = "levemente abaixo da ponta".
+   * Onde bate, na reta pulso -> ponta do dedão (1 = na ponta; 0.95 = um pouco abaixo).
+   * Na pose de joinha a ponta do dedão fica ~1,4 tamanho de mão acima do pulso.
    */
-  thumbOffset: 0.25,
+  thumbReach: 0.95,
   /**
    * Alcance da baqueta em múltiplos da distância pulso -> nós dos dedos. 1 = nos nós;
    * 1.3 = um pouco além, onde ficam as falanges com a mão fechada. Medido em proporção da
@@ -297,54 +298,31 @@ export const HAND_STYLE = {
 };
 
 /**
- * Bateria: 5 peças em arco em volta do usuário, em unidades de palco (0 a 1 da área
- * visível). No espelho, a mão esquerda do usuário aparece à esquerda da tela, então o
- * chimbal fica à esquerda e o prato à direita, como numa bateria real. O bumbo é um
- * pad embaixo, tocado com a mão (pedal não é rastreável pela câmera frontal).
+ * Bateria: 5 peças em unidades de palco (0 a 1 da área visível). No espelho, a mão esquerda
+ * do usuário aparece à esquerda, então o chimbal fica à esquerda e o prato à direita.
+ *
+ * Layout v2 (gravações de 17/11, 136 s mirando com o dedão):
+ * - O dedão passou só ~2% do tempo em x < 0,2: o chimbal em 0,14 estava fora do alcance.
+ *   Chimbal e prato vieram para dentro (0,22 e 0,78) e ficaram maiores (`size`).
+ * - Na pose de joinha o pulso fica ~0,26 da tela abaixo do dedão. Com o bumbo em y 0,89 o
+ *   pulso saía da tela em 17 de 18 tentativas e o rastreamento perdia a mão; e a descida até
+ *   ele passava pela caixa ou pelo tom. O bumbo agora é um pad no vão entre caixa e tom,
+ *   onde as mãos já passam muito, e nenhuma descida até ele cruza outra peça.
  * Paleta provisória (cartão "Definir paleta"): cores saturadas e bem distintas.
  */
 export const DRUM_KIT = {
   pieces: [
-    {
-      id: 'hihat',
-      label: 'Chimbal',
-      sound: 'hihat',
-      color: '#ffd23f',
-      shape: 'circle',
-      x: 0.14,
-      y: 0.5,
-    },
-    {
-      id: 'snare',
-      label: 'Caixa',
-      sound: 'snare',
-      color: '#ff5c5c',
-      shape: 'circle',
-      x: 0.36,
-      y: 0.64,
-    },
-    { id: 'tom', label: 'Tom', sound: 'tom', color: '#3ddc97', shape: 'circle', x: 0.64, y: 0.64 },
-    {
-      id: 'crash',
-      label: 'Prato',
-      sound: 'crash',
-      color: '#4dabf7',
-      shape: 'circle',
-      x: 0.86,
-      y: 0.5,
-    },
+    // prettier-ignore
+    { id: 'hihat', label: 'Chimbal', sound: 'hihat', color: '#ffd23f', shape: 'circle', x: 0.22, y: 0.48, size: 1.1 },
+    // prettier-ignore
+    { id: 'snare', label: 'Caixa', sound: 'snare', color: '#ff5c5c', shape: 'circle', x: 0.37, y: 0.63 },
+    // prettier-ignore
+    { id: 'tom', label: 'Tom', sound: 'tom', color: '#3ddc97', shape: 'circle', x: 0.63, y: 0.63 },
+    // prettier-ignore
+    { id: 'crash', label: 'Prato', sound: 'crash', color: '#4dabf7', shape: 'circle', x: 0.78, y: 0.45, size: 1.1 },
     // Retângulo: x/y são o centro, w/h a largura e a altura.
-    {
-      id: 'kick',
-      label: 'Bumbo',
-      sound: 'kick',
-      color: '#b388ff',
-      shape: 'rect',
-      x: 0.5,
-      y: 0.89,
-      w: 0.22,
-      h: 0.16,
-    },
+    // prettier-ignore
+    { id: 'kick', label: 'Bumbo', sound: 'kick', color: '#b388ff', shape: 'rect', x: 0.5, y: 0.73, w: 0.1, h: 0.17 },
   ],
   /** Raio das peças redondas, em fração do menor lado do palco (fica redonda em qualquer tela). */
   radius: 0.13,
@@ -358,6 +336,14 @@ export const DRUM_KIT = {
 export const KIT_STYLE = {
   /** Opacidade do preenchimento em repouso (0 a 1). Baixa para o usuário se ver por trás. */
   fillAlpha: 0.22,
+  /**
+   * Opacidade do preenchimento quando a ponta da baqueta está sobre a peça (mira). Mostra
+   * onde o golpe vai cair antes de bater; nas gravações de 17/11 chimbal, prato e bumbo
+   * raramente acertavam de primeira.
+   */
+  hoverFillAlpha: 0.4,
+  /** Espessura do contorno da peça em mira, em px CSS. */
+  hoverLineWidth: 6,
   /** Opacidade do preenchimento no instante do golpe. */
   hitFillAlpha: 0.8,
   /** Opacidade do contorno. */

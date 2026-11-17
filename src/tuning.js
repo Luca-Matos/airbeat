@@ -6,12 +6,12 @@ const CONTROL_POINTS = ['thumb', 'stick', 'knuckles', 'palm', 'indexTip'];
 const MODES = ['stroke', 'lowestPoint', 'velocity'];
 /** Limites dos ajustes por tecla. */
 const REACH = { min: 0.8, max: 2.2, step: 0.1 };
-const THUMB = { min: -0.5, max: 1, step: 0.05 };
+const THUMB = { min: 0.6, max: 1.2, step: 0.05 };
 const VELOCITY = { min: 0.3, max: 3, step: 0.1 };
 const PREDICT = { min: 0, max: 120, step: 10 };
 
 /**
- * @typedef {{ mode: string, controlPoint: string, stickReach: number, thumbOffset: number,
+ * @typedef {{ mode: string, controlPoint: string, stickReach: number, thumbReach: number,
  *   downVelocity: number, predictMs: number }} Tuning
  */
 
@@ -21,7 +21,7 @@ export function defaultTuning() {
     mode: HIT.mode,
     controlPoint: HIT.controlPoint,
     stickReach: HIT.stickReach,
-    thumbOffset: HIT.thumbOffset,
+    thumbReach: HIT.thumbReach,
     downVelocity: HIT.downVelocity,
     predictMs: HIT.predictMs,
   };
@@ -34,8 +34,8 @@ const clamp = (v, r) => Math.round(Math.min(r.max, Math.max(r.min, v)) * 100) / 
 const next = (list, current) => list[(list.indexOf(current) + 1) % list.length];
 
 /**
- * Teclas: [ e ] ajustam o ponto da mão (no dedão, sobe/desce o ponto; na baqueta, o
- * alcance); , e . o limiar de velocidade; 9 e 0 a predição; K troca o ponto; O o modo.
+ * Teclas: [ e ] encurtam e alongam a baqueta (no dedão, o ponto desce ou sobe na reta
+ * pulso -> dedão); , e . o limiar de velocidade; 9 e 0 a predição; K troca o ponto; O o modo.
  * @param {Tuning} t
  * @param {string} key em minúscula
  * @returns {Tuning | null} null se a tecla não é de ajuste
@@ -45,11 +45,11 @@ export function adjustTuning(t, key) {
   switch (key) {
     case '[':
       return thumb
-        ? { ...t, thumbOffset: clamp(t.thumbOffset + THUMB.step, THUMB) }
+        ? { ...t, thumbReach: clamp(t.thumbReach - THUMB.step, THUMB) }
         : { ...t, stickReach: clamp(t.stickReach - REACH.step, REACH) };
     case ']':
       return thumb
-        ? { ...t, thumbOffset: clamp(t.thumbOffset - THUMB.step, THUMB) }
+        ? { ...t, thumbReach: clamp(t.thumbReach + THUMB.step, THUMB) }
         : { ...t, stickReach: clamp(t.stickReach + REACH.step, REACH) };
     case ',':
       return { ...t, downVelocity: clamp(t.downVelocity - VELOCITY.step, VELOCITY) };
@@ -72,7 +72,7 @@ export function adjustTuning(t, key) {
 export function describeTuning(t) {
   const point =
     t.controlPoint === 'thumb'
-      ? `dedão ${t.thumbOffset}`
+      ? `dedão ${t.thumbReach}`
       : t.controlPoint === 'stick'
         ? `stick ${t.stickReach}`
         : t.controlPoint;

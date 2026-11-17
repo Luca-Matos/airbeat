@@ -7,10 +7,10 @@ describe('tuning', () => {
     expect(defaultTuning()).toMatchObject({ mode: HIT.mode, stickReach: HIT.stickReach });
   });
 
-  it('no dedão, ] sobe o ponto em direção à ponta e [ desce', () => {
-    const t = { ...defaultTuning(), controlPoint: 'thumb', thumbOffset: 0.25 };
-    expect(adjustTuning(t, ']').thumbOffset).toBe(0.2);
-    expect(adjustTuning(t, '[').thumbOffset).toBe(0.3);
+  it('no dedão, ] leva o ponto para a ponta e [ desce em direção ao pulso', () => {
+    const t = { ...defaultTuning(), controlPoint: 'thumb', thumbReach: 0.95 };
+    expect(adjustTuning(t, ']').thumbReach).toBe(1);
+    expect(adjustTuning(t, '[').thumbReach).toBe(0.9);
   });
 
   it('9 e 0 mudam a predição em 10 ms, sem ficar negativa', () => {

@@ -122,10 +122,13 @@ function rgba(hex, alpha) {
  * @param {View} view
  * @param {Record<string, number>} lastHitAt ms do último golpe em cada peça
  * @param {number} now ms
+ * @param {Set<string>} [aimed] peças com a ponta de alguma baqueta em cima (mira)
  */
-export function drawKit(ctx, pieces, view, lastHitAt, now) {
+export function drawKit(ctx, pieces, view, lastHitAt, now, aimed = new Set()) {
   for (const piece of pieces) {
     const glow = flashLevel(lastHitAt[piece.id], now);
+    const hover = aimed.has(piece.id);
+    const restAlpha = hover ? KIT_STYLE.hoverFillAlpha : KIT_STYLE.fillAlpha;
     const scale = 1 + (KIT_STYLE.hitScale - 1) * glow;
     const cx = piece.cx * view.width;
     const cy = piece.cy * view.height;
@@ -141,13 +144,10 @@ export function drawKit(ctx, pieces, view, lastHitAt, now) {
     else ctx.ellipse(cx, cy, hw, hh, 0, 0, Math.PI * 2);
     ctx.shadowColor = piece.color;
     ctx.shadowBlur = KIT_STYLE.glowBlur * glow;
-    ctx.fillStyle = rgba(
-      piece.color,
-      KIT_STYLE.fillAlpha + (KIT_STYLE.hitFillAlpha - KIT_STYLE.fillAlpha) * glow,
-    );
+    ctx.fillStyle = rgba(piece.color, restAlpha + (KIT_STYLE.hitFillAlpha - restAlpha) * glow);
     ctx.fill();
     ctx.shadowBlur = 0;
-    ctx.lineWidth = KIT_STYLE.lineWidth;
+    ctx.lineWidth = hover ? KIT_STYLE.hoverLineWidth : KIT_STYLE.lineWidth;
     ctx.strokeStyle = rgba(piece.color, KIT_STYLE.strokeAlpha);
     ctx.stroke();
 

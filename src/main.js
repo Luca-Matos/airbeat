@@ -258,7 +258,10 @@ function onFrame(timestampMs, metadata) {
   if (mode === 'free') for (const hit of hits) onHit(hit, tracked);
 
   clear(ctx, view);
-  if (mode === 'free') drawKit(ctx, pieces, view, lastHitAt, timestampMs);
+  if (mode === 'free') {
+    const aimed = new Set(tracked.map((h) => pieceAt(pieces, h.point)).filter(Boolean));
+    drawKit(ctx, pieces, view, lastHitAt, timestampMs, aimed);
+  }
   if (debugPanel.visible || mode === 'position') drawHands(ctx, hands, view);
   drawSticks(ctx, tracked, bases, view);
 
