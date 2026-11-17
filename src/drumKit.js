@@ -33,8 +33,9 @@ export function layoutKit(width, height, kit = DRUM_KIT) {
     shape: /** @type {'circle' | 'rect'} */ (p.shape),
     cx: p.x,
     cy: p.y,
-    hw: p.shape === 'rect' ? p.w / 2 : radiusPx / width,
-    hh: p.shape === 'rect' ? p.h / 2 : radiusPx / height,
+    // `size` aumenta uma peça redonda em relação às outras (pratos são maiores).
+    hw: p.shape === 'rect' ? p.w / 2 : (radiusPx * (p.size ?? 1)) / width,
+    hh: p.shape === 'rect' ? p.h / 2 : (radiusPx * (p.size ?? 1)) / height,
   }));
 }
 

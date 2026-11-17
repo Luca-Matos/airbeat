@@ -3,7 +3,6 @@
 
 export const LANDMARK = {
   WRIST: 0,
-  THUMB_IP: 3,
   THUMB_TIP: 4,
   INDEX_MCP: 5,
   INDEX_TIP: 8,
@@ -74,31 +73,45 @@ export function stickPoints(hand, reach) {
   };
 }
 
+/** @typedef {'thumb' | 'stick' | 'knuckles' | 'palm' | 'indexTip'} ControlPointKind */
+/** @typedef {{ stickReach?: number, thumbReach?: number }} ControlPointParams */
+
 /**
- * Ponta do dedão, puxada `offset` em direção à junta do meio do dedão (3).
- * 0 = na ponta; 0.25 = levemente abaixo dela, onde a "baqueta" sai da mão fechada
- * em posição de joinha.
- * @param {{ x: number, y: number }[]} hand
- * @param {number} offset
+ * Baqueta de cada tipo de ponto: `base` é de onde a haste sai, `tip` é o ponto que bate
+ * na peça. O desenho e a detecção usam a mesma função, então nunca se desalinham.
+ * 'thumb': do pulso até a ponta do dedão (mão fechada em joinha, como quem segura uma
+ *   baqueta); `thumbReach` 1 = na ponta, 0.95 = um pouco abaixo dela, sobre a mesma reta.
+ * @param {{ x: number, y: number }[]} hand 21 pontos
+ * @param {ControlPointKind} kind
+ * @param {ControlPointParams} [params]
+ * @returns {{ base: { x: number, y: number }, tip: { x: number, y: number } }}
  */
-export function thumbPoint(hand, offset) {
-  const tip = hand[LANDMARK.THUMB_TIP];
-  const ip = hand[LANDMARK.THUMB_IP];
-  return { x: tip.x + offset * (ip.x - tip.x), y: tip.y + offset * (ip.y - tip.y) };
+export function stickGeometry(hand, kind, params = {}) {
+  if (kind === 'thumb') {
+    const wrist = hand[LANDMARK.WRIST];
+    const thumb = hand[LANDMARK.THUMB_TIP];
+    const r = params.thumbReach ?? 0.95;
+    return {
+      base: { x: wrist.x, y: wrist.y },
+      tip: { x: wrist.x + r * (thumb.x - wrist.x), y: wrist.y + r * (thumb.y - wrist.y) },
+    };
+  }
+  if (kind === 'stick') return stickPoints(hand, params.stickReach ?? 1.3);
+  const base = mean(hand, PALM_POINTS);
+  if (kind === 'indexTip') {
+    return { base, tip: { x: hand[LANDMARK.INDEX_TIP].x, y: hand[LANDMARK.INDEX_TIP].y } };
+  }
+  if (kind === 'knuckles') return { base, tip: mean(hand, KNUCKLE_POINTS) };
+  return { base, tip: base };
 }
 
 /**
  * Ponto de controle da mão: o que bate na peça. Ver HIT.controlPoint.
  * @param {{ x: number, y: number }[]} hand 21 pontos do MediaPipe
- * @param {'thumb' | 'stick' | 'knuckles' | 'palm' | 'indexTip'} kind
- * @param {{ stickReach?: number, thumbOffset?: number }} [params]
+ * @param {ControlPointKind} kind
+ * @param {ControlPointParams} [params]
  * @returns {{ x: number, y: number }}
  */
 export function controlPoint(hand, kind, params = {}) {
-  const reach = params.stickReach ?? 1.3;
-  if (kind === 'thumb') return thumbPoint(hand, params.thumbOffset ?? 0.25);
-  if (kind === 'indexTip') return { x: hand[LANDMARK.INDEX_TIP].x, y: hand[LANDMARK.INDEX_TIP].y };
-  if (kind === 'knuckles') return mean(hand, KNUCKLE_POINTS);
-  if (kind === 'stick') return stickPoints(hand, reach).tip;
-  return mean(hand, PALM_POINTS);
+  return stickGeometry(hand, kind, params).tip;
 }

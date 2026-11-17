@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createHandAssociation } from '../src/handAssociation.js';
-import { controlPoint, stickPoints } from '../src/landmarks.js';
+import { controlPoint, stickGeometry, stickPoints } from '../src/landmarks.js';
 import { toStage } from '../src/render.js';
 
 describe('createHandAssociation', () => {
@@ -65,6 +65,17 @@ describe('controlPoint', () => {
     expect(base.y).toBeGreaterThan(tip.y);
     expect(controlPoint(h, 'stick', { stickReach: 1.3 })).toEqual(tip);
     expect(controlPoint(h, 'knuckles').y).toBeCloseTo(0.6);
+  });
+
+  it('dedão: baqueta do pulso até a ponta do dedão, batendo um pouco abaixo da ponta', () => {
+    const h = Array.from({ length: 21 }, () => ({ x: 0.5, y: 0.6 }));
+    h[0] = { x: 0.5, y: 0.8 }; // pulso
+    h[4] = { x: 0.6, y: 0.4 }; // ponta do dedão
+    const { base, tip } = stickGeometry(h, 'thumb', { thumbReach: 0.95 });
+    expect(base).toEqual({ x: 0.5, y: 0.8 });
+    expect(tip.x).toBeCloseTo(0.5 + 0.95 * 0.1);
+    expect(tip.y).toBeCloseTo(0.8 - 0.95 * 0.4);
+    expect(controlPoint(h, 'thumb', { thumbReach: 1 })).toEqual({ x: 0.6, y: 0.4 });
   });
 
   it('ponta do indicador = ponto 8', () => {

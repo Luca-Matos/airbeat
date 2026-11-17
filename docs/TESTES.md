@@ -29,7 +29,7 @@ Checklist preenchido a cada rodada de testes, um bloco por dispositivo. Mínimo:
 
 Abra com `?debug=1` no fim do link para ver o painel. Teclas com o painel aberto: **D** esconde,
 **R** grava landmarks, **P** reproduz uma gravação, **Z** zera os contadores. Ajuste ao vivo:
-**[** e **]** descem e sobem o ponto que bate (no dedão) ou mudam o alcance (na baqueta), **,** e
+**[** e **]** encurtam e alongam a baqueta (no dedão, o ponto desce ou sobe na reta pulso -> dedão), **,** e
 **.** o limiar de velocidade, **9** e **0** a predição, **K** troca o ponto da mão (thumb, stick,
 knuckles, palm, indexTip) e **O** o modo (stroke, lowestPoint, velocity). No modo livre:
 **M** liga o metrônomo, **+**/**−** mudam o BPM, **Esc** volta ao menu.
@@ -137,3 +137,34 @@ Mudanças contra o atraso: predição de 40 ms (toca quando a baqueta vai entrar
 pedida a 60 FPS (vale se a webcam aguentar; o painel mostra o real) e medição de verdade no painel
 ("atraso do golpe: captura→som + saída"). Pedir menos latência ao navegador não mudou nada: o total
 de áudio ficou em ~45 ms em todas as opções.
+
+### 17/11 (3ª rodada) · Luca · mesmo PC · gravações `…23-04-38.json` (34 s) e `…23-06-38.json` (102 s)
+
+Impressões: predição testada de 0 a 90 ms, difícil diferenciar; 40 ms pareceu melhor (mantido). Posição
+da mão melhorou, mas ainda estranha. Prato, chimbal e bumbo quase nunca acertam de primeira. Pedido:
+baqueta como vetor do pulso até a ponta do dedão, batendo na ponta ou um pouco abaixo.
+
+Descidas por peça (fundo da descida mais perto de cada peça, replay com a configuração da gravação):
+
+| Peça    | Descidas | Viraram golpe | Observação                                                                |
+| ------- | -------- | ------------- | ------------------------------------------------------------------------- |
+| Caixa   | 145      | 80%           |                                                                           |
+| Tom     | 182      | 84%           |                                                                           |
+| Prato   | 27       | 74%           | golpe na diagonal (43°) e terminando abaixo da peça                       |
+| Chimbal | 6        | 3             | o dedão passou só ~2% do tempo em x < 0,2: fora do alcance                |
+| Bumbo   | 18       | 7             | pulso fora da tela em 17 de 18; 5 vezes a caixa ou o tom tocou no caminho |
+
+- Na pose de joinha a ponta do dedão fica ~1,4 tamanho de mão acima do pulso (~0,26 da tela). Peça
+  com centro abaixo de y ≈ 0,74 obriga o pulso a sair da tela e o rastreamento perde a mão.
+- Duas mãos visíveis em 71% a 75% dos quadros (era 55% na 2ª rodada).
+
+Mudanças (layout v2 e baqueta):
+
+- Baqueta do pulso (0) até a ponta do dedão (4); bate a 95% do caminho (`HIT.thumbReach`).
+- Chimbal de x 0,14 para 0,22 e prato de 0,86 para 0,78, os dois 10% maiores e um pouco mais altos.
+- Bumbo: de pad embaixo (y 0,89) para pad no vão entre caixa e tom (y 0,73). A descida até ele não
+  cruza outra peça e o pulso fica na tela.
+- Mira: a peça sob a ponta da baqueta acende de leve antes do golpe.
+- Replay das gravações com o layout novo: caixa e tom praticamente iguais (2 golpes do tom foram
+  para o prato e 1 a 2 da caixa para o chimbal). Chimbal, prato e bumbo precisam de gravação nova,
+  porque estas foram feitas mirando o layout antigo.
