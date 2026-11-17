@@ -31,20 +31,58 @@ const PALM_POINTS = [
   LANDMARK.PINKY_MCP,
 ];
 
+/** Base dos quatro dedos (nós dos dedos). */
+const KNUCKLE_POINTS = [
+  LANDMARK.INDEX_MCP,
+  LANDMARK.MIDDLE_MCP,
+  LANDMARK.RING_MCP,
+  LANDMARK.PINKY_MCP,
+];
+
 /**
- * Ponto de controle da mão, o que faz o papel da baqueta. A palma é mais estável
- * que a ponta do dedo; a ponta do indicador fica como alternativa para comparar.
- * @param {{ x: number, y: number }[]} hand 21 pontos do MediaPipe
- * @param {'palm' | 'indexTip'} kind
- * @returns {{ x: number, y: number }}
+ * @param {{ x: number, y: number }[]} hand
+ * @param {number[]} ids
  */
-export function controlPoint(hand, kind) {
-  if (kind === 'indexTip') return { x: hand[LANDMARK.INDEX_TIP].x, y: hand[LANDMARK.INDEX_TIP].y };
+function mean(hand, ids) {
   let x = 0;
   let y = 0;
-  for (const i of PALM_POINTS) {
+  for (const i of ids) {
     x += hand[i].x;
     y += hand[i].y;
   }
-  return { x: x / PALM_POINTS.length, y: y / PALM_POINTS.length };
+  return { x: x / ids.length, y: y / ids.length };
+}
+
+/**
+ * Baqueta virtual: sai do centro da palma e termina na ponta da mão, na reta
+ * pulso -> nós dos dedos, a `reach` vezes essa distância a partir do pulso. Usa só
+ * pulso e nós dos dedos, que o MediaPipe acha bem mesmo com a mão fechada.
+ * @param {{ x: number, y: number }[]} hand 21 pontos
+ * @param {number} reach
+ * @returns {{ base: { x: number, y: number }, tip: { x: number, y: number } }}
+ */
+export function stickPoints(hand, reach) {
+  const wrist = hand[LANDMARK.WRIST];
+  const knuckles = mean(hand, KNUCKLE_POINTS);
+  return {
+    base: mean(hand, PALM_POINTS),
+    tip: {
+      x: wrist.x + reach * (knuckles.x - wrist.x),
+      y: wrist.y + reach * (knuckles.y - wrist.y),
+    },
+  };
+}
+
+/**
+ * Ponto de controle da mão: o que bate na peça. Ver HIT.controlPoint.
+ * @param {{ x: number, y: number }[]} hand 21 pontos do MediaPipe
+ * @param {'stick' | 'knuckles' | 'palm' | 'indexTip'} kind
+ * @param {number} [reach] alcance da baqueta (só para 'stick')
+ * @returns {{ x: number, y: number }}
+ */
+export function controlPoint(hand, kind, reach = 1.3) {
+  if (kind === 'indexTip') return { x: hand[LANDMARK.INDEX_TIP].x, y: hand[LANDMARK.INDEX_TIP].y };
+  if (kind === 'knuckles') return mean(hand, KNUCKLE_POINTS);
+  if (kind === 'stick') return stickPoints(hand, reach).tip;
+  return mean(hand, PALM_POINTS);
 }

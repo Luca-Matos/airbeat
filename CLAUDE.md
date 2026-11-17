@@ -208,6 +208,6 @@ Multiusuário, ranking, login, pedal de bumbo, MIDI, baquetas reais, leitura de 
 - Revisão pendente: PRs #1 a #3 (Etapa 0) e os PRs empilhados de 17/11, nesta ordem: deteccao-golpe -> sons-pecas -> bateria-cinco-pecas -> metronomo -> modo-livre-menu -> docs/estado-atual-17-11. Mesclar de baixo para cima. Revisor: Luigi
 - Mudança a registrar no Plano (Controle de mudanças): teste em celular sai do critério de 19/11 e passa para a Fase 3 (26/11); em 19/11 a demonstração e as medições são só no computador (Chrome/Edge, `npm run dev`). Motivo: atraso da Fase 2 e foco no núcleo. Risco: problemas de desempenho no celular aparecem mais tarde.
 - Decisões tomadas: Canvas 2D (17/11).
-- Decisões em aberto: ponto de controle (palma, padrão, vs ponta do indicador: `HIT.controlPoint`); disparo por limiar vs ponto mais baixo (`HIT.mode`; comparar com as fixtures)
+- Decisões em aberto: ponto de controle e modo de disparo. Proposta de 17/11 a validar com gravação nova: baqueta virtual (`HIT.controlPoint = 'stick'`, alcance 1,3) e modo `stroke` (uma peça por descida; a peça inteira vale). Análise em `docs/TESTES.md` (Registros)
 - Próximos (Fase 3, 26/11): estrutura das lições, `scoring`, calibragem, lições 1 a 3, modo por toque ou clique
 - Bugs conhecidos: nenhum registrado. FPS no Chrome headless (~5, GPU emulada) não vale como medição.

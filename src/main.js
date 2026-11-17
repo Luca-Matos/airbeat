@@ -2,7 +2,7 @@
 import './style.css';
 import { createAudioEngine } from './audio/engine.js';
 import { CameraError, startCamera } from './camera.js';
-import { HIT, VIDEO_FIT } from './config.js';
+import { HIT, POSITIONING, VIDEO_FIT } from './config.js';
 import { createDebugPanel, createReplaySource, downloadJson, pickJsonFile } from './debug.js';
 import { layoutKit, pieceAt } from './drumKit.js';
 import { createMonotonicClock, startFrameLoop } from './frameLoop.js';
@@ -10,11 +10,13 @@ import { createHandPipeline } from './handPipeline.js';
 import { createHandTracker } from './handTracker.js';
 import { createLandmarkRecorder, parseRecording } from './landmarkRecording.js';
 import { clear, drawHands, drawKit, drawSticks, fitCanvas, toStage } from './render.js';
+import { adjustTuning, defaultTuning, describeTuning } from './tuning.js';
 import { createHandsHint } from './ui/handsHint.js';
 import { createMetronomeControls } from './ui/metronomeControls.js';
 import {
   createPositionHold,
   handFullyVisible,
+  handSize,
   POSITION_MESSAGES,
   positionStatus,
 } from './ui/positioning.js';
@@ -29,6 +31,7 @@ const debugPanel = createDebugPanel(document.getElementById('debug'), {
   onRecordToggle: toggleRecording,
   onReplayRequest: startReplay,
   onResetCounters: resetCounters,
+  onKey: retune,
 });
 
 const toolbar = document.getElementById('toolbar');
@@ -72,7 +75,21 @@ let pieces = [];
 let piecesFor = '';
 /** @type {Record<string, number>} ms do último golpe em cada peça (para o brilho) */
 const lastHitAt = {};
-const pipeline = createHandPipeline({ pieceAt: (p) => pieceAt(pieces, p) });
+// Parâmetros de golpe em uso; o painel de debug muda ao vivo (ver tuning.js).
+let tuning = defaultTuning();
+let pipeline = createPipeline();
+
+function createPipeline() {
+  return createHandPipeline({ pieceAt: (p) => pieceAt(pieces, p), config: tuning });
+}
+
+/** @param {string} key */
+function retune(key) {
+  const next = adjustTuning(tuning, key);
+  if (!next) return;
+  tuning = next;
+  pipeline = createPipeline();
+}
 
 // Debug: gravação, reprodução e contagem de golpes (teste informal "20 golpes de cada mão").
 const recorder = createLandmarkRecorder();
@@ -207,14 +224,14 @@ function onFrame(timestampMs) {
   lastFrame = { t: timestampMs, view };
   if (recorder.recording && !recorder.add(timestampMs, hands)) toggleRecording();
 
-  const { tracked, hits, states } = pipeline.process(timestampMs, hands, view);
+  const { tracked, bases, hits, states } = pipeline.process(timestampMs, hands, view);
   // Fora do modo livre a detecção roda (mantém a velocidade em dia), mas não toca.
   if (mode === 'free') for (const hit of hits) onHit(hit, tracked);
 
   clear(ctx, view);
   if (mode === 'free') drawKit(ctx, pieces, view, lastHitAt, timestampMs);
   if (debugPanel.visible || mode === 'position') drawHands(ctx, hands, view);
-  drawSticks(ctx, tracked, view);
+  drawSticks(ctx, tracked, bases, view);
 
   if (mode === 'position') updatePosition(hands, view, timestampMs);
   if (mode === 'free') {
@@ -226,7 +243,19 @@ function onFrame(timestampMs) {
     delegate: replay ? 'gravação' : tracker.delegate,
     videoWidth: video.videoWidth,
     videoHeight: video.videoHeight,
-    extra: debugLines(states, timestampMs),
+    extra: [
+      ...debugLines(states, timestampMs),
+      `tamanho da mão: ${
+        hands
+          .map((h) =>
+            handSize(
+              h.map((p) => toStage(p, view)),
+              view,
+            ).toFixed(2),
+          )
+          .join(' · ') || '-'
+      } (máx. ${POSITIONING.maxHandSize})`,
+    ],
   });
 }
 
@@ -236,8 +265,10 @@ function onFrame(timestampMs) {
  * @param {number} now
  */
 function updatePosition(hands, view, now) {
-  const allInside = hands.every((h) => handFullyVisible(h.map((p) => toStage(p, view))));
-  const status = positionStatus(hands.length, allInside);
+  const staged = hands.map((h) => h.map((p) => toStage(p, view)));
+  const allInside = staged.every((h) => handFullyVisible(h));
+  const largest = Math.max(0, ...staged.map((h) => handSize(h, view)));
+  const status = positionStatus(hands.length, allInside, largest);
   const { progress, ready } = positionHold(status, now);
   if (positionText.textContent !== POSITION_MESSAGES[status]) {
     positionText.textContent = POSITION_MESSAGES[status];
@@ -268,7 +299,7 @@ function onHit(hit, tracked) {
  */
 function debugLines(states, now) {
   const lines = [
-    `golpe: ${HIT.mode} · ${HIT.controlPoint} · limiar ${HIT.downVelocity}/s · ${HIT.minIntervalMs} ms`,
+    `${describeTuning(tuning)} · intervalo ${HIT.minIntervalMs} ms`,
     ...states.map(
       (s) =>
         `mão ${s.id}: vy ${s.vy.toFixed(2)}/s · ${s.pieceId ?? '-'}${s.armed ? '' : ' · desarmada'}`,
@@ -300,6 +331,8 @@ function toggleRecording() {
   }
   const rec = recorder.stop();
   const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+  // Guarda junto os parâmetros em uso, para reproduzir a gravação nas mesmas condições.
+  if (rec) rec.tuning = tuning;
   if (rec) downloadJson(`airbeat-landmarks-${stamp}.json`, rec);
 }
 
