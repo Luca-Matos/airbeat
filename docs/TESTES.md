@@ -52,7 +52,8 @@ Abra com `?debug=1` no fim do link para ver o painel. Teclas com o painel aberto
    `tests/fixtures/README.md` e coloque os arquivos lá, com `note` e `expected` preenchidos.
 10. **Vazamento.** Entre e saia do modo livre 10 vezes (Menu / Modo livre). O FPS não deve cair.
 
-Mínimo: 2 computadores e 2 celulares. No celular a câmera só abre pelo link do Pages (HTTPS).
+Para 19/11: 2 computadores (Chrome ou Edge), rodando local com `npm run dev`. Celulares ficaram
+para a Fase 3 (decisão de 17/11); quando voltarem, a câmera só abre pelo link do Pages (HTTPS).
 O FPS do Chrome headless (~5) não vale como medição.
 
 ## Registros
