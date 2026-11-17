@@ -44,6 +44,48 @@ export const TRACKING = {
   minTrackingConfidence: 0.5,
 };
 
+/**
+ * Detecção de golpe. As posições estão em "unidades de palco": 0 a 1 da largura e
+ * da altura da área visível (depois do espelho e do corte do object-fit). Velocidade
+ * em unidades de palco por segundo, medida pelo tempo dos quadros.
+ * y cresce para baixo, então velocidade positiva = mão descendo.
+ */
+export const HIT = {
+  /**
+   * 'velocity': dispara quando a mão entra na peça descendo acima do limiar.
+   * 'lowestPoint': espera a mão parar de descer (onde a baqueta bateria de verdade).
+   * As duas ficam disponíveis para comparar com gravações; decisão em aberto.
+   */
+  mode: 'velocity',
+  /** Ponto da mão usado como "baqueta": 'palm' (média de 0,5,9,13,17) ou 'indexTip' (8). */
+  controlPoint: 'palm',
+  /** Velocidade descendente mínima para contar como golpe, em alturas de palco por segundo. */
+  downVelocity: 1.2,
+  /** Velocidade de subida que rearma a mão depois de um golpe, em alturas de palco por segundo. */
+  rearmUpVelocity: 0.3,
+  /** Intervalo mínimo entre dois golpes da mesma mão, em ms. Evita disparo duplo. */
+  minIntervalMs: 120,
+  /** Se dois quadros da mesma mão estão mais distantes que isso (ms), a velocidade recomeça do zero. */
+  maxFrameGapMs: 150,
+  /**
+   * Peso do quadro novo na média móvel exponencial da posição (0 a 1).
+   * 1 = sem suavização. Suavizar reduz tremor mas atrasa o golpe; começar sem e medir.
+   */
+  smoothingAlpha: 1,
+  /** No modo 'lowestPoint', tempo máximo (ms) esperando a mão parar antes de disparar mesmo assim. */
+  lowestPointMaxWaitMs: 200,
+  /** Velocidade (alturas de palco/s) abaixo da qual a descida é considerada parada no modo 'lowestPoint'. */
+  lowestPointStopVelocity: 0.15,
+};
+
+/** Associação das mãos entre quadros (não usamos o rótulo esquerda/direita do MediaPipe). */
+export const HAND_MATCH = {
+  /** Distância máxima, em unidades de palco, para considerar que é a mesma mão do quadro anterior. */
+  maxJump: 0.25,
+  /** Tempo, em ms, que uma mão sumida ainda é lembrada antes de virar uma mão nova. */
+  forgetAfterMs: 300,
+};
+
 /** Desenho das mãos sobre o vídeo. */
 export const HAND_STYLE = {
   /** Cor de cada mão, na ordem em que o MediaPipe as devolve (não é esquerda/direita). */

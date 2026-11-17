@@ -34,6 +34,19 @@ export function toScreen(point, view) {
 }
 
 /**
+ * Mesmo ponto em unidades de palco: 0 a 1 da área visível (largura e altura do
+ * canvas). É o espaço em que a bateria e a detecção de golpe trabalham, para que
+ * a zona da peça seja exatamente o que o usuário vê. Passa por toScreen.
+ * @param {{ x: number, y: number }} point
+ * @param {View} view
+ * @returns {{ x: number, y: number }}
+ */
+export function toStage(point, view) {
+  const p = toScreen(point, view);
+  return { x: p.x / view.width, y: p.y / view.height };
+}
+
+/**
  * Ajusta o canvas ao tamanho exibido, com nitidez em telas de alta densidade.
  * O contexto fica em px CSS depois disso.
  * @param {HTMLCanvasElement} canvas
