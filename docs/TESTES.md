@@ -202,3 +202,38 @@ Por peça na gravação de precisão (agora): caixa 84%, bumbo 86%, tom 76%, chi
 tentativas). "Descidas de referência" = descidas da ponta da baqueta com curso de 3% ou mais; sem a
 contagem real dos golpes, uma parte delas pode ser só reposicionamento da mão, e uma parte dos golpes
 sem descida pode ser golpe curto de verdade. Próximo passo: gravação com contagem anotada.
+
+### 17/11 (5ª rodada, contada) · Luca · mesmo PC · gravação `…23-29-00.json` (79 s)
+
+Protocolo: 20 golpes em cada peça no metrônomo a 80 BPM (750 ms), na ordem tom, bumbo, caixa e
+chimbal. Impressão: alguns golpes não tocaram, outros tocaram duas vezes.
+
+Contagem pelo replay, usando a grade de 750 ms (intervalo < 450 ms = duplo; buraco > 1100 ms = falta):
+
+| Bloco     | Golpes feitos | Antes (PR #14)         | Agora                  |
+| --------- | ------------- | ---------------------- | ---------------------- |
+| Tom       | 20            | 21 (2 duplos, 1 falta) | 20 (0 duplos, 1 falta) |
+| Bumbo     | 20            | 23 (4 duplos)          | 24 (4 duplos)          |
+| Caixa     | 20            | 21 (2 duplos, 1 falta) | 20 (0 duplos, 1 falta) |
+| Chimbal   | 20*           | 20 (2 faltas)          | 21 (1 falta)           |
+| **Total** | **80**        | **8 duplos, 4 faltas** | **4 duplos, 3 faltas** |
+
+\* No chimbal o tempo cobre 22 batidas; a contagem do bloco é incerta.
+
+Causas encontradas quadro a quadro:
+
+- **Duplos por quadros colados:** às vezes dois quadros chegam com 16 ms de diferença em vez de 33.
+  Uma tremida de 1,6% medida em 16 ms parece golpe rápido. Corrigido: a velocidade é medida contra
+  uma amostra de pelo menos 30 ms (`HIT.velocityWindowMs`).
+- **Duplos restantes (bumbo):** a baqueta paira **dentro** do bumbo entre os golpes e dá uma tremida
+  de ~4% num quadro só. A 29 FPS isso é igual a um golpe curto de verdade (o golpe real de 48,88 s
+  também desce 3% num único quadro). Exigir 2 quadros de descida zerou os duplos, mas perdeu 10
+  golpes reais; descartado. Ficou uma dica no menu: descansar a baqueta acima da peça, sem ela acender.
+- **Faltas por golpe lento e suave:** a descida passava de 0,25/s por vários quadros antes de chegar a
+  0,4/s, e o curso contado a partir daí não chegava a 3%. Corrigido em parte: a descida começa em
+  0,3/s (`HIT.downVelocity`). Contar o curso desde o topo do movimento recuperava mais, mas criava
+  duplos (a mão parada escorregando); descartado.
+- **Falta restante no tom (≈26,4 s):** a mão desceu só 2,6%, no nível do tremor.
+
+Efeito nas gravações anteriores: precisão (68 s) 78% -> 82% das descidas tocam; 102 s: 81% -> 83%,
+com golpes sem descida 23 -> 29.

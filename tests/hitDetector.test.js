@@ -24,8 +24,8 @@ describe('hitDetector: uma mão', () => {
   });
 
   it('descida muito lenta (pico abaixo de downVelocity) não dispara', () => {
-    // Pico = 0,35 * π / (2 * 1,6 s) ≈ 0,34/s: mão sendo reposicionada, não golpe.
-    const hits = run(sample(stroke({ at: 100, downMs: 1600, upMs: 1600 }), { durationMs: 3600 }));
+    // Pico = 0,35 * π / (2 * 2,2 s) ≈ 0,25/s: mão sendo reposicionada, não golpe.
+    const hits = run(sample(stroke({ at: 100, downMs: 2200, upMs: 2200 }), { durationMs: 4800 }));
     expect(hits).toHaveLength(0);
   });
 
@@ -83,7 +83,7 @@ describe('hitDetector: uma mão', () => {
     for (const fps of [15, 30, 60]) {
       expect(run(sample(stroke({ at: 100 }), { fps, durationMs: 800 }))).toHaveLength(1);
       expect(
-        run(sample(stroke({ at: 100, downMs: 1600, upMs: 1600 }), { fps, durationMs: 3600 })),
+        run(sample(stroke({ at: 100, downMs: 2200, upMs: 2200 }), { fps, durationMs: 4800 })),
       ).toHaveLength(0);
     }
   });
@@ -160,6 +160,17 @@ describe('hitDetector: modo stroke (padrão)', () => {
     const frames = sample(pos, { durationMs: 1000 });
     expect(run(frames, { mode: 'stroke' })).toHaveLength(2);
     expect(run(frames, { mode: 'stroke', rearmMaxMs: 1e9 })).toHaveLength(1);
+  });
+
+  it('quadros colados não inflam a velocidade de uma tremida', () => {
+    // Mão parada na caixa; um quadro chega 16 ms depois do anterior com 1,6% de tremida
+    // (gravação contada de 17/11, 20,13 s). Medida em 16 ms daria 1/s, um "golpe rápido".
+    const frames = [0, 33, 66, 100, 133, 149, 182, 215, 248].map((t, i) => ({
+      t,
+      point: { x: 0.4, y: [0.6, 0.6, 0.6, 0.6, 0.584, 0.6, 0.6, 0.6, 0.6][i] },
+    }));
+    expect(run(frames, { mode: 'stroke' })).toHaveLength(0);
+    expect(run(frames, { mode: 'stroke', velocityWindowMs: 0 })).toHaveLength(1);
   });
 
   it('não toca com a mão subindo, mesmo dentro da peça', () => {
@@ -239,9 +250,10 @@ describe('hitDetector: modo ponto mais baixo', () => {
     expect(byLowest).toHaveLength(1);
     expect(byLowest[0].pieceId).toBe('snare');
     expect(byLowest[0].t).toBeGreaterThan(byVelocity[0].t);
-    // O ponto mais baixo do golpe sintético é em 100 + 150 ms.
+    // O ponto mais baixo do golpe sintético é em 100 + 150 ms. A 60 FPS a velocidade é
+    // medida em 2 quadros (velocityWindowMs = 30), o que soma até um quadro (~17 ms).
     expect(byLowest[0].t).toBeGreaterThanOrEqual(230);
-    expect(byLowest[0].t).toBeLessThanOrEqual(280);
+    expect(byLowest[0].t).toBeLessThanOrEqual(300);
   });
 
   it('dois golpes separados geram dois eventos também no modo ponto mais baixo', () => {
