@@ -80,8 +80,11 @@ export const HIT = {
 
 /** Associação das mãos entre quadros (não usamos o rótulo esquerda/direita do MediaPipe). */
 export const HAND_MATCH = {
-  /** Distância máxima, em unidades de palco, para considerar que é a mesma mão do quadro anterior. */
-  maxJump: 0.25,
+  /**
+   * Distância máxima, em unidades de palco, para considerar que é a mesma mão do quadro anterior.
+   * Um golpe rápido a 15 FPS anda ~0,25 entre quadros; abaixo disso a mão "vira outra" e o golpe se perde.
+   */
+  maxJump: 0.35,
   /** Tempo, em ms, que uma mão sumida ainda é lembrada antes de virar uma mão nova. */
   forgetAfterMs: 300,
 };

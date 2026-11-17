@@ -27,6 +27,14 @@ describe('createHandAssociation', () => {
     expect(late.id).not.toBe(far.id);
   });
 
+  it('golpe rápido a 15 FPS continua sendo a mesma mão (o detector não perde a velocidade)', () => {
+    const associate = createHandAssociation();
+    const [a] = associate(0, [{ x: 0.4, y: 0.3 }]);
+    // Pico do golpe sintético padrão (3,7 alturas/s) em 66 ms: ~0,25 de deslocamento.
+    const [b] = associate(66, [{ x: 0.4, y: 0.55 }]);
+    expect(b.id).toBe(a.id);
+  });
+
   it('lembra a mão durante uma perda curta', () => {
     const associate = createHandAssociation({ forgetAfterMs: 300 });
     const [a] = associate(0, [{ x: 0.5, y: 0.5 }]);
