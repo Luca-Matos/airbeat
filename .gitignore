@@ -7,3 +7,4 @@ coverage/
 .DS_Store
 # Cópia gerada a partir de node_modules/@mediapipe/tasks-vision/wasm (scripts/copy-mediapipe-wasm.js)
 public/mediapipe/
+sounds-preview
