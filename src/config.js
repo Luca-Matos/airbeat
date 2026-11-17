@@ -91,10 +91,20 @@ export const HIT = {
    */
   stickReach: 1.3,
   /**
-   * Velocidade descendente que inicia um golpe, em alturas de palco por segundo.
-   * 0.8 pegou mais golpes que 1.0 nas gravações de 17/11 sem aumentar os sem descida.
+   * Velocidade descendente que INICIA uma descida, em alturas de palco por segundo.
+   * A descida só toca se for rápida (fastVelocity) ou tiver curso (minTravel).
    */
-  downVelocity: 0.8,
+  downVelocity: 0.4,
+  /**
+   * Descida com pico acima disto (alturas de palco/s) toca na hora, sem esperar curso.
+   * Era o limiar único até a 3ª rodada de 17/11.
+   */
+  fastVelocity: 0.8,
+  /**
+   * Curso mínimo (alturas de palco) desde o topo da descida para um golpe lento tocar.
+   * Separa golpe curto e controlado (4 a 5% da tela) de tremor (~1 a 2%).
+   */
+  minTravel: 0.03,
   /**
    * Abaixo desta velocidade (alturas de palco/s) a descida terminou. Bem menor que
    * downVelocity: a mão freando dentro da peça ainda está no mesmo golpe.
@@ -121,6 +131,11 @@ export const HIT = {
    * curso de um golpe rápido (~0,05 ou mais).
    */
   rearmRise: 0.03,
+  /**
+   * Depois deste tempo (ms) desde o último golpe a mão rearma mesmo sem subir. O tremor que
+   * o rearme barra acontece logo depois do golpe; 250 ms = até 4 golpes/s por mão sem subir.
+   */
+  rearmMaxMs: 250,
   /** Se dois quadros da mesma mão estão mais distantes que isso (ms), a velocidade recomeça do zero. */
   maxFrameGapMs: 150,
   /**
@@ -308,6 +323,9 @@ export const HAND_STYLE = {
  *   pulso saía da tela em 17 de 18 tentativas e o rastreamento perdia a mão; e a descida até
  *   ele passava pela caixa ou pelo tom. O bumbo agora é um pad no vão entre caixa e tom,
  *   onde as mãos já passam muito, e nenhuma descida até ele cruza outra peça.
+ * - Gravação de precisão (23-18-46): 7 golpes no bumbo pararam 3 a 9% da tela acima do topo
+ *   dele, na altura da caixa e do tom. O pad subiu para essa altura (y 0,66, alto 0,2), e o
+ *   prato veio de 0,78 para 0,77 (3 golpes pararam logo à esquerda dele).
  * Paleta provisória (cartão "Definir paleta"): cores saturadas e bem distintas.
  */
 export const DRUM_KIT = {
@@ -319,10 +337,10 @@ export const DRUM_KIT = {
     // prettier-ignore
     { id: 'tom', label: 'Tom', sound: 'tom', color: '#3ddc97', shape: 'circle', x: 0.63, y: 0.63 },
     // prettier-ignore
-    { id: 'crash', label: 'Prato', sound: 'crash', color: '#4dabf7', shape: 'circle', x: 0.78, y: 0.45, size: 1.1 },
+    { id: 'crash', label: 'Prato', sound: 'crash', color: '#4dabf7', shape: 'circle', x: 0.77, y: 0.45, size: 1.1 },
     // Retângulo: x/y são o centro, w/h a largura e a altura.
     // prettier-ignore
-    { id: 'kick', label: 'Bumbo', sound: 'kick', color: '#b388ff', shape: 'rect', x: 0.5, y: 0.73, w: 0.1, h: 0.17 },
+    { id: 'kick', label: 'Bumbo', sound: 'kick', color: '#b388ff', shape: 'rect', x: 0.5, y: 0.66, w: 0.1, h: 0.2 },
   ],
   /** Raio das peças redondas, em fração do menor lado do palco (fica redonda em qualquer tela). */
   radius: 0.13,

@@ -60,7 +60,8 @@ describe('pieceAt', () => {
 
   it('aceita a folga de golpe além do desenho', () => {
     const snare = byId.snare;
-    const justOutside = { x: snare.cx + snare.hw * 1.1, y: snare.cy };
+    // Lado esquerdo: o direito encosta no bumbo e lá vale a peça mais próxima.
+    const justOutside = { x: snare.cx - snare.hw * 1.1, y: snare.cy };
     expect(pieceDistance(snare, justOutside)).toBeGreaterThan(1);
     expect(pieceAt(pieces, justOutside)).toBe('snare');
     expect(pieceAt(pieces, justOutside, 1)).toBeNull();

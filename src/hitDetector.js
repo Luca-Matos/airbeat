@@ -63,18 +63,29 @@ export function createHitDetector({ pieceAt, config = {} }) {
   }
 
   /**
+   * Golpe de verdade, e não tremor: rápido (fastVelocity) OU com curso suficiente desde o
+   * topo da descida (minTravel). Golpes curtos e controlados, de quem toca preciso no
+   * ritmo, são lentos (pico ~0,6/s na gravação de 17/11) mas descem 4 a 5% da tela.
    * @param {any} s
+   */
+  function deliberate(s) {
+    return s.stroke.peakVy >= cfg.fastVelocity || s.point.y - s.stroke.topY >= cfg.minTravel;
+  }
+
+  /**
+   * @param {any} s
+   * @param {{ x: number, y: number }} prev posição no quadro anterior
    * @param {number} t
    * @param {HitEvent[]} hits
    */
-  function step(s, t, hits) {
+  function step(s, prev, t, hits) {
     const cooled = t - s.lastHitAt >= cfg.minIntervalMs;
 
     if (cfg.mode === 'velocity') {
       // v1: velocidade alta no próprio quadro dentro da peça. Rearme ao subir ou sair da peça.
       if (!s.armed && (s.vy <= -cfg.rearmUpVelocity || s.pieceId !== s.lastHitPiece))
         s.armed = true;
-      if (s.armed && s.pieceId && s.vy >= cfg.downVelocity && cooled) {
+      if (s.armed && s.pieceId && s.vy >= cfg.fastVelocity && cooled) {
         fire(s, s.pieceId, t, hits);
         s.lastHitPiece = s.pieceId;
         s.armed = false;
@@ -84,13 +95,18 @@ export function createHitDetector({ pieceAt, config = {} }) {
 
     if (s.needsRise) {
       s.lowestSinceHit = Math.max(s.lowestSinceHit, s.point.y);
-      if (s.point.y <= s.lowestSinceHit - cfg.rearmRise) s.needsRise = false;
+      // Rearma ao subir rearmRise OU depois de rearmMaxMs. O prazo cobre quem toca no ritmo
+      // a partir da mão parada: ela escorrega devagar depois do golpe e sobe pouco antes do
+      // próximo (gravação de precisão de 17/11). Tremor continua barrado por minTravel.
+      if (s.point.y <= s.lowestSinceHit - cfg.rearmRise || t - s.lastHitAt >= cfg.rearmMaxMs) {
+        s.needsRise = false;
+      }
     }
 
     // Começo e fim da descida. O fim usa um limiar baixo (histerese): a mão freando
     // dentro da peça ainda é a mesma descida.
     if (!s.stroke && !s.needsRise && s.vy >= cfg.downVelocity) {
-      s.stroke = { since: t, peakVy: s.vy, used: false, lastPiece: null };
+      s.stroke = { since: t, peakVy: s.vy, used: false, lastPiece: null, topY: prev.y };
     }
     if (!s.stroke) return;
     s.stroke.peakVy = Math.max(s.stroke.peakVy, s.vy);
@@ -100,7 +116,7 @@ export function createHitDetector({ pieceAt, config = {} }) {
     if (cfg.mode === 'lowestPoint') {
       if (ended) {
         const piece = s.pieceId ?? s.stroke.lastPiece;
-        if (piece && cooled) fire(s, piece, t, hits);
+        if (piece && cooled && deliberate(s)) fire(s, piece, t, hits);
         s.stroke = null;
       }
       return;
@@ -111,7 +127,15 @@ export function createHitDetector({ pieceAt, config = {} }) {
     // antes, compensando parte do atraso da câmera.
     // Só enquanto desce: no quadro em que a descida acabou a mão já pode estar subindo.
     const target = s.pieceId ?? predictedZone(s);
-    if (!ended && !s.stroke.used && target && cooled) fire(s, target, t, hits);
+    if (!ended && target) s.stroke.sawPiece = true;
+    if (!ended && !s.stroke.used && target && cooled && deliberate(s)) fire(s, target, t, hits);
+    // A descida parou já dentro de uma peça que ela não tinha alcançado antes: golpe curto
+    // que só chega à peça no fundo do movimento. Toca agora (gravação de precisão de 17/11,
+    // bumbo). Se a peça já estava sob a baqueta e o golpe foi barrado (intervalo mínimo),
+    // não toca atrasado.
+    if (ended && !s.stroke.used && !s.stroke.sawPiece && s.pieceId && cooled && deliberate(s)) {
+      fire(s, s.pieceId, t, hits);
+    }
     if (ended) s.stroke = null;
   }
 
@@ -159,7 +183,7 @@ export function createHitDetector({ pieceAt, config = {} }) {
       s.vy = (cur.y - prev.y) / (gap / 1000);
       s.point = cur;
       s.pieceId = zoneOf(prev, cur);
-      step(s, t, hits);
+      step(s, prev, t, hits);
     }
     return hits;
   }
