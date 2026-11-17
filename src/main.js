@@ -11,6 +11,7 @@ import { createHandTracker } from './handTracker.js';
 import { createLandmarkRecorder, parseRecording } from './landmarkRecording.js';
 import { clear, drawHands, drawKit, drawSticks, fitCanvas } from './render.js';
 import { createHandsHint } from './ui/handsHint.js';
+import { createMetronomeControls } from './ui/metronomeControls.js';
 import { showError, showLoading, showScreen } from './ui/screens.js';
 
 const stage = document.getElementById('stage');
@@ -22,6 +23,13 @@ const debugPanel = createDebugPanel(document.getElementById('debug'), {
   onRecordToggle: toggleRecording,
   onReplayRequest: startReplay,
   onResetCounters: resetCounters,
+});
+
+const metronome = createMetronomeControls(document.getElementById('toolbar'), () => audio);
+window.addEventListener('keydown', (e) => {
+  if (e.ctrlKey || e.metaKey || e.altKey || stage.hidden) return;
+  // Tecla de atalho não pode disparar junto com o clique num botão focado.
+  if (metronome.handleKey(e.key.toLowerCase())) e.preventDefault();
 });
 
 // O relógio vive fora da sessão: ao tentar de novo, o timestamp continua crescendo.
@@ -161,6 +169,7 @@ function onFrame(timestampMs) {
   if (debugPanel.visible) drawHands(ctx, hands, view);
   drawSticks(ctx, tracked, view);
 
+  metronome.update();
   hint.update(hands.length, timestampMs);
   debugPanel.update(timestampMs, detectMs, {
     hands: hands.length,
@@ -247,6 +256,7 @@ function fail(message) {
 }
 
 function stopSession() {
+  metronome.stop();
   stopLoop?.();
   stopLoop = null;
   camera?.stop();

@@ -14,6 +14,23 @@
         <canvas id="overlay"></canvas>
         <p id="hint" class="hint" role="status" hidden></p>
         <pre id="debug" class="debug" hidden></pre>
+        <div id="toolbar" class="toolbar">
+          <div class="metronome" role="group" aria-label="Metrônomo">
+            <button id="metro-toggle" class="ghost" type="button" aria-pressed="false">
+              Metrônomo
+            </button>
+            <button id="bpm-down" class="ghost round" type="button" aria-label="Mais lento">
+              −
+            </button>
+            <span class="bpm"><output id="bpm-value">80</output> BPM</span>
+            <button id="bpm-up" class="ghost round" type="button" aria-label="Mais rápido">
+              +
+            </button>
+            <div id="beat-dots" class="beat-dots" aria-hidden="true">
+              <span class="accent"></span><span></span><span></span><span></span>
+            </div>
+          </div>
+        </div>
       </div>
 
       <section id="screen-intro" class="screen">
