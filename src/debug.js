@@ -42,31 +42,100 @@ export function debugEnabledFromUrl(search) {
 }
 
 /**
- * Liga o painel a um elemento do DOM. A tecla D mostra e esconde.
+ * Liga o painel a um elemento do DOM. Teclas (com o foco na página):
+ * D mostra/esconde; com o painel visível, R grava/para landmarks, P reproduz
+ * uma gravação e Z zera o contador de golpes.
  * @param {HTMLElement} el
+ * @param {{ onRecordToggle?: () => void, onReplayRequest?: () => void, onResetCounters?: () => void }} [handlers]
  */
-export function createDebugPanel(el) {
+export function createDebugPanel(el, handlers = {}) {
   const stats = createFrameStats(DEBUG.statsWindowMs);
   let lastRefresh = -Infinity;
   el.hidden = !debugEnabledFromUrl(location.search);
   window.addEventListener('keydown', (e) => {
-    if (e.key === 'd' || e.key === 'D') el.hidden = !el.hidden;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const key = e.key.toLowerCase();
+    if (key === 'd') el.hidden = !el.hidden;
+    if (el.hidden) return;
+    if (key === 'r') handlers.onRecordToggle?.();
+    if (key === 'p') handlers.onReplayRequest?.();
+    if (key === 'z') handlers.onResetCounters?.();
   });
 
   return {
+    get visible() {
+      return !el.hidden;
+    },
     /**
      * @param {number} now
      * @param {number} detectMs
-     * @param {{ hands: number, delegate: string, videoWidth: number, videoHeight: number }} info
+     * @param {{ hands: number, delegate: string, videoWidth: number, videoHeight: number, extra?: string[] }} info
      */
     update(now, detectMs, info) {
       stats.add(now, detectMs);
       if (el.hidden || now - lastRefresh < DEBUG.panelRefreshMs) return;
       lastRefresh = now;
       const { fps, avgDetectMs } = stats.read();
-      el.textContent =
-        `FPS ${fps.toFixed(1)} · detecção ${avgDetectMs.toFixed(1)} ms\n` +
-        `${info.delegate} · ${info.videoWidth}x${info.videoHeight} · mãos ${info.hands}`;
+      el.textContent = [
+        `FPS ${fps.toFixed(1)} · detecção ${avgDetectMs.toFixed(1)} ms`,
+        `${info.delegate} · ${info.videoWidth}x${info.videoHeight} · mãos ${info.hands}`,
+        ...(info.extra ?? []),
+        'teclas: D painel · R gravar · P reproduzir · Z zerar',
+      ].join('\n');
+    },
+  };
+}
+
+/**
+ * Baixa um objeto como arquivo .json no próprio aparelho (nada é enviado).
+ * @param {string} filename
+ * @param {unknown} data
+ */
+export function downloadJson(filename, data) {
+  const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/** Abre o seletor de arquivos e devolve o JSON escolhido (ou null se cancelar). */
+export function pickJsonFile() {
+  return new Promise((resolve, reject) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/json,.json';
+    input.addEventListener('change', async () => {
+      const file = input.files?.[0];
+      if (!file) return resolve(null);
+      try {
+        resolve(JSON.parse(await file.text()));
+      } catch (err) {
+        reject(err);
+      }
+    });
+    input.click();
+  });
+}
+
+/**
+ * Fonte de mãos vinda de uma gravação: devolve, para cada instante, o último quadro
+ * gravado até ali. Começa a contar no primeiro pedido. Puro.
+ * @param {{ t: number, hands: { x: number, y: number }[][] }[]} frames
+ */
+export function createReplaySource(frames) {
+  let t0 = null;
+  let i = 0;
+  return {
+    /** @param {number} now ms @returns {{ x: number, y: number }[][] | null} null quando acabou */
+    handsAt(now) {
+      if (t0 === null) t0 = now;
+      const rel = now - t0;
+      while (i + 1 < frames.length && frames[i + 1].t <= rel) i++;
+      if (i >= frames.length - 1 && rel > frames[frames.length - 1].t) return null;
+      return frames[i]?.hands ?? null;
     },
   };
 }

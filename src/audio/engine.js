@@ -16,7 +16,7 @@ export function createAudioEngine(env = {}) {
   if (!AudioContextClass) throw new Error('Este navegador não tem Web Audio.');
   const ctx = new AudioContextClass({ latencyHint: AUDIO.latencyHint });
   // resume() logo aqui, ainda dentro do gesto do usuário.
-  const resumed = ctx.resume?.();
+  const ready = Promise.resolve(ctx.resume?.()).catch((err) => console.warn('Áudio suspenso', err));
 
   const master = ctx.createGain();
   master.gain.value = AUDIO.masterGain;
@@ -34,7 +34,7 @@ export function createAudioEngine(env = {}) {
   return {
     ctx,
     /** Promessa do resume() feito no gesto; aguardar antes de agendar o metrônomo. */
-    ready: Promise.resolve(resumed),
+    ready,
     /**
      * Toca um som agora (when = 0) ou num instante do relógio do áudio, em segundos.
      * @param {SoundId} id
@@ -53,7 +53,7 @@ export function createAudioEngine(env = {}) {
     /** Atraso estimado entre agendar e o som sair do alto-falante, em ms (o que o navegador informa). */
     outputLatencyMs: () => ((ctx.baseLatency ?? 0) + (ctx.outputLatency ?? 0)) * 1000,
     /** Retoma se o navegador suspendeu (aba em segundo plano, fone desconectado). */
-    resume: () => (ctx.state === 'suspended' ? ctx.resume() : Promise.resolve()),
-    close: () => ctx.close(),
+    resume: () => (ctx.state === 'suspended' ? ctx.resume().catch(() => {}) : Promise.resolve()),
+    close: () => ctx.close().catch(() => {}),
   };
 }

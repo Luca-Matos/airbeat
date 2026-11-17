@@ -1,6 +1,6 @@
 // Desenho no canvas sobre o vídeo. toScreen é o ÚNICO lugar que converte
 // coordenadas normalizadas da câmera em pixels de tela, incluindo o espelho.
-import { HAND_STYLE } from './config.js';
+import { HAND_STYLE, KIT_STYLE } from './config.js';
 import { HAND_CONNECTIONS } from './landmarks.js';
 
 /**
@@ -64,13 +64,18 @@ export function fitCanvas(canvas, ctx) {
   return { width, height };
 }
 
+/** @param {CanvasRenderingContext2D} ctx @param {View} view */
+export function clear(ctx, view) {
+  ctx.clearRect(0, 0, view.width, view.height);
+}
+
 /**
+ * Esqueleto das mãos (21 pontos). Fica para o debug: no jogo só a baqueta aparece.
  * @param {CanvasRenderingContext2D} ctx
  * @param {{ x: number, y: number }[][]} hands
  * @param {View} view
  */
 export function drawHands(ctx, hands, view) {
-  ctx.clearRect(0, 0, view.width, view.height);
   hands.forEach((hand, i) => {
     const color = HAND_STYLE.colors[i % HAND_STYLE.colors.length];
     const pts = hand.map((p) => toScreen(p, view));
@@ -89,4 +94,91 @@ export function drawHands(ctx, hands, view) {
       ctx.fill();
     }
   });
+}
+
+/**
+ * Brilho de 0 a 1 que some linearmente em flashMs depois do golpe. Puro.
+ * @param {number | undefined} hitAt ms
+ * @param {number} now ms
+ * @param {number} [flashMs]
+ */
+export function flashLevel(hitAt, now, flashMs = KIT_STYLE.flashMs) {
+  if (hitAt === undefined) return 0;
+  const age = now - hitAt;
+  return age < 0 || age >= flashMs ? 0 : 1 - age / flashMs;
+}
+
+/** @param {string} hex '#rrggbb' @param {number} alpha */
+function rgba(hex, alpha) {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgb(${(n >> 16) & 255} ${(n >> 8) & 255} ${n & 255} / ${alpha})`;
+}
+
+/**
+ * As peças da bateria, semitransparentes, com brilho e leve aumento no golpe.
+ * As peças estão em unidades de palco (já espelhadas), então basta escalar.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {import('./drumKit.js').KitPiece[]} pieces
+ * @param {View} view
+ * @param {Record<string, number>} lastHitAt ms do último golpe em cada peça
+ * @param {number} now ms
+ */
+export function drawKit(ctx, pieces, view, lastHitAt, now) {
+  for (const piece of pieces) {
+    const glow = flashLevel(lastHitAt[piece.id], now);
+    const scale = 1 + (KIT_STYLE.hitScale - 1) * glow;
+    const cx = piece.cx * view.width;
+    const cy = piece.cy * view.height;
+    const hw = piece.hw * view.width * scale;
+    const hh = piece.hh * view.height * scale;
+
+    ctx.save();
+    ctx.beginPath();
+    // roundRect falta em navegadores antigos (Safari < 16); cai para retângulo reto.
+    if (piece.shape === 'rect' && ctx.roundRect)
+      ctx.roundRect(cx - hw, cy - hh, hw * 2, hh * 2, Math.min(hw, hh) * 0.35);
+    else if (piece.shape === 'rect') ctx.rect(cx - hw, cy - hh, hw * 2, hh * 2);
+    else ctx.ellipse(cx, cy, hw, hh, 0, 0, Math.PI * 2);
+    ctx.shadowColor = piece.color;
+    ctx.shadowBlur = KIT_STYLE.glowBlur * glow;
+    ctx.fillStyle = rgba(
+      piece.color,
+      KIT_STYLE.fillAlpha + (KIT_STYLE.hitFillAlpha - KIT_STYLE.fillAlpha) * glow,
+    );
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.lineWidth = KIT_STYLE.lineWidth;
+    ctx.strokeStyle = rgba(piece.color, KIT_STYLE.strokeAlpha);
+    ctx.stroke();
+
+    ctx.font = KIT_STYLE.labelFont;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = 'rgb(0 0 0 / 0.6)';
+    ctx.strokeText(piece.label, cx, cy);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(piece.label, cx, cy);
+    ctx.restore();
+  }
+}
+
+/**
+ * A "baqueta" de cada mão: o ponto de controle usado na detecção.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {{ point: { x: number, y: number } }[]} hands em unidades de palco
+ * @param {View} view
+ */
+export function drawSticks(ctx, hands, view) {
+  ctx.save();
+  for (const { point } of hands) {
+    ctx.beginPath();
+    ctx.arc(point.x * view.width, point.y * view.height, HAND_STYLE.stickRadius, 0, Math.PI * 2);
+    ctx.fillStyle = rgba(HAND_STYLE.stickColor, 0.85);
+    ctx.fill();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgb(0 0 0 / 0.5)';
+    ctx.stroke();
+  }
+  ctx.restore();
 }
