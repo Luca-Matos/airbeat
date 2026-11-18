@@ -59,6 +59,59 @@ Para 19/11: 2 computadores (Chrome ou Edge), rodando local com `npm run dev`. Ce
 para a Fase 3 (decisão de 17/11); quando voltarem, a câmera só abre pelo link do Pages (HTTPS).
 O FPS do Chrome headless (~5) não vale como medição.
 
+## Medições de desempenho (Reunião de Controle de 19/11)
+
+Critério da etapa: medir FPS e latência em 2 computadores (celulares adiados para a Fase 3, decisão de
+17/11). Meta do XRD: pelo menos 24 FPS.
+
+### PC 1 · Luca · notebook
+
+| Campo                                   | Valor                                                                                                                                                                                                                                          |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Data e testador                         | 17/11/2026, Luca (gravações) e Claude Code (medição com câmera falsa)                                                                                                                                                                          |
+| Dispositivo                             | Notebook Intel Core i7-1255U, Intel Iris Xe (Alder Lake GT2), 8 GB, Arch Linux                                                                                                                                                                 |
+| Navegador                               | Google Chrome 149                                                                                                                                                                                                                              |
+| Câmera                                  | "720p HD Camera" USB. Modos: 640x480 e 1280x720, **no máximo 30 FPS** (o app pede 60; não é possível nesta câmera)                                                                                                                             |
+| Link testado                            | local (`npm run dev`) e Pages (https://luca-matos.github.io/airbeat/)                                                                                                                                                                          |
+| FPS medido (7 gravações reais, 6 min)   | 25,5 a 29,0 FPS, intervalo mediano 33 ms. **Meta de 24 FPS atingida**; o teto é a câmera (30)                                                                                                                                                  |
+| Tempo de detecção (MediaPipe, GPU)      | 19,5 ms (Pages) a 22,6 ms (local), com câmera falsa do Chrome e GPU real                                                                                                                                                                       |
+| Captura do quadro até o fim da detecção | 24 a 32 ms (medido pelo `captureTime` do Chrome)                                                                                                                                                                                               |
+| Saída de áudio                          | 45 a 55 ms (PipeWire, buffer de 1024 amostras; pedir menos latência ao navegador não muda)                                                                                                                                                     |
+| Espera pelo próximo quadro              | 0 a 33 ms (câmera a 30 FPS)                                                                                                                                                                                                                    |
+| Atraso total do golpe                   | **Não medido com mãos reais ainda.** O painel mostra "atraso do golpe: captura→som + saída" depois de alguns golpes; falta anotar. O golpe dispara antes do fundo do movimento (modo `stroke` + predição de 40 ms), o que compensa parte disso |
+| Latência percebida                      | "Um pouco de atraso, não é a pior coisa" (Luca, 17/11)                                                                                                                                                                                         |
+| Mãos detectadas                         | Duas mãos em 55% a 94% dos quadros, conforme a pose; mão fechada de lado é a que mais some                                                                                                                                                     |
+| Erros no console                        | Nenhum (só avisos internos do MediaPipe: `gl_context`, `landmark_projection`)                                                                                                                                                                  |
+| Iluminação e fundo                      | Quarto com luz artificial; o mesmo em todas as gravações                                                                                                                                                                                       |
+
+Precisão da detecção (gravação contada de 17/11, 80 golpes a 80 BPM em tom, bumbo, caixa e chimbal):
+85 toques para 80 golpes. Pelo menos 77 dos 80 golpes tocaram (**96% ou mais**; meta do XRD: 85%). A
+falta clara é 1 na caixa (na troca de mão); no chimbal a contagem do bloco é incerta (1 a 2). Houve 4
+toques duplos (5%), todos no bumbo, com a baqueta parada dentro da peça. Um "buraco" aparente no tom
+(26 a 27 s) é variação do seu tempo (um golpe ~280 ms adiantado e o seguinte ~170 ms atrasado), não
+falta. Detalhes em Registros, 5ª rodada.
+
+### PC 2 · Luigi
+
+| Campo                                             | Valor      |
+| ------------------------------------------------- | ---------- |
+| Data e testador                                   | _pendente_ |
+| Dispositivo                                       | _pendente_ |
+| Navegador                                         | _pendente_ |
+| Câmera (FPS real no painel)                       | _pendente_ |
+| FPS medido (painel)                               | _pendente_ |
+| Tempo de detecção (painel)                        | _pendente_ |
+| Captura→detecção (painel)                         | _pendente_ |
+| Saída de áudio (painel)                           | _pendente_ |
+| Atraso do golpe (painel, depois de ~20 golpes)    | _pendente_ |
+| Golpes feitos x detectados (20 por peça a 80 BPM) | _pendente_ |
+| Observações                                       | _pendente_ |
+
+Como medir no PC 2: abrir https://luca-matos.github.io/airbeat/?debug=1, Começar, posicionar, Modo livre.
+Esperar 10 s parado e anotar as linhas "FPS · detecção", "câmera … · captura→detecção" e "áudio · saída".
+Dar ~20 golpes e anotar "atraso do golpe". Para a precisão, apertar Z, tocar 20 golpes por peça com o
+metrônomo (M) a 80 BPM e anotar os contadores.
+
 ## Registros
 
 ### 17/11 · Luca · PC, Chrome, janela 1896x926 · gravação `airbeat-landmarks-2026-11-17-22-24-54.json`
@@ -210,13 +263,13 @@ chimbal. Impressão: alguns golpes não tocaram, outros tocaram duas vezes.
 
 Contagem pelo replay, usando a grade de 750 ms (intervalo < 450 ms = duplo; buraco > 1100 ms = falta):
 
-| Bloco     | Golpes feitos | Antes (PR #14)         | Agora                  |
-| --------- | ------------- | ---------------------- | ---------------------- |
-| Tom       | 20            | 21 (2 duplos, 1 falta) | 20 (0 duplos, 1 falta) |
-| Bumbo     | 20            | 23 (4 duplos)          | 24 (4 duplos)          |
-| Caixa     | 20            | 21 (2 duplos, 1 falta) | 20 (0 duplos, 1 falta) |
-| Chimbal   | 20*           | 20 (2 faltas)          | 21 (1 falta)           |
-| **Total** | **80**        | **8 duplos, 4 faltas** | **4 duplos, 3 faltas** |
+| Bloco     | Golpes feitos | Antes (PR #14)         | Agora                                                         |
+| --------- | ------------- | ---------------------- | ------------------------------------------------------------- |
+| Tom       | 20            | 21 (2 duplos)          | 20 (certo; o intervalo grande em 26–27 s é variação de tempo) |
+| Bumbo     | 20            | 23 (4 duplos)          | 24 (4 duplos)                                                 |
+| Caixa     | 20            | 21 (2 duplos, 1 falta) | 20 (0 duplos, 1 falta)                                        |
+| Chimbal   | 20*           | 20 (2 faltas)          | 21 (1 falta)                                                  |
+| **Total** | **80**        | **8 duplos, 4 faltas** | **4 duplos, 3 faltas**                                        |
 
 \* No chimbal o tempo cobre 22 batidas; a contagem do bloco é incerta.
 
