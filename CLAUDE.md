@@ -196,18 +196,60 @@ Multiusuário, ranking, login, pedal de bumbo, MIDI, baquetas reais, leitura de 
 
 ## Estado atual (atualizar a cada sessão de trabalho)
 
-Última atualização: 17/11/2026. Próxima entrega: Reunião de Controle de 19/11 (bateria completa e modo livre).
+Última atualização: 17/11/2026, noite. Próxima entrega: Reunião de Controle de 19/11 (bateria completa e
+modo livre). Depois: Fase 3, 26/11 (aplicação prévia).
+
+### Feito
 
 - [x] Fase 1 (15/10): One-Page, XRD v1.0, Plano v1.0, backlog do Trello, Apresentação 1
-- [x] Etapa 0 (29/10): repositório e deploy. https://github.com/Luca-Matos/airbeat, publicado em https://luca-matos.github.io/airbeat/ (PR #1)
-- [~] Etapa 0: câmera espelhada (PR #2) e MediaPipe com duas mãos (PR #3). Falta teste manual em PC e celular (alinhamento dos pontos, FPS 24+)
-- [ ] Etapa 0: wireframes (atrasado; as telas de posicionamento e menu já existem em código e podem servir de base)
-- [~] Fase 2 (05/11, atrasada): detecção de golpe v1 (`feat/deteccao-golpe`), sons sintetizados (`feat/sons-pecas`), gravar/reproduzir landmarks no debug. Código e testes automáticos prontos; falta teste com mãos reais e 3 fixtures gravadas. Canvas 2D decidido em 17/11 (falta escrever no XRD)
-- [~] 19/11: 5 peças em arco (`feat/bateria-cinco-pecas`), metrônomo com BPM (`feat/metronomo`), posicionamento, menu e modo livre (`feat/modo-livre-menu`). Código pronto; falta medição de FPS e latência em 2 PCs (`docs/TESTES.md`). Celulares adiados por decisão de 17/11 (ver Controle de mudanças abaixo)
-- Etapa em andamento: recuperação da Fase 2 + entrega de 19/11
-- Revisão pendente: PRs #1 a #3 (Etapa 0) e os PRs empilhados de 17/11, nesta ordem: deteccao-golpe -> sons-pecas -> bateria-cinco-pecas -> metronomo -> modo-livre-menu -> docs/estado-atual-17-11. Mesclar de baixo para cima. Revisor: Luigi
-- Mudança a registrar no Plano (Controle de mudanças): teste em celular sai do critério de 19/11 e passa para a Fase 3 (26/11); em 19/11 a demonstração e as medições são só no computador (Chrome/Edge, `npm run dev`). Motivo: atraso da Fase 2 e foco no núcleo. Risco: problemas de desempenho no celular aparecem mais tarde.
-- Decisões tomadas: Canvas 2D (17/11).
-- Decisões em aberto: ponto de controle e modo de disparo. Proposta atual (17/11, 2ª rodada), a validar com gravação nova: baqueta do pulso até a ponta do dedão com a mão em joinha (`HIT.controlPoint = 'thumb'`, `thumbReach` 0,95), modo `stroke` (velocidade medida em ≥ 30 ms; início 0,3/s; toca se rápido 0,8/s ou com curso de 3%; toca ao parar dentro da peça), predição de 40 ms, rearme por subida com prazo de 250 ms, layout v3 das peças (bumbo entre caixa e tom, na altura delas). Análise em `docs/TESTES.md` (Registros)
-- Próximos (Fase 3, 26/11): estrutura das lições, `scoring`, calibragem, lições 1 a 3, modo por toque ou clique
-- Bugs conhecidos: nenhum registrado. FPS no Chrome headless (~5, GPU emulada) não vale como medição.
+- [x] Etapa 0: repositório, deploy, câmera espelhada, MediaPipe (PRs #1 a #3). Publicado em https://luca-matos.github.io/airbeat/
+- [x] Fase 2 + 19/11 (entregue em 17/11, PRs #5 a #15, revisados pelo Luigi e mesclados): detecção de golpe, sons
+      sintetizados, 5 peças, metrônomo com BPM, posicionamento, menu, modo livre, debug com gravar/reproduzir e
+      medição de atraso. 128 testes.
+- [x] Medições do PC 1 (Luca) em `docs/TESTES.md`: 25 a 29 FPS (webcam limitada a 30), detecção ~20 ms,
+      captura→detecção ~25 ms, áudio ~50 ms; teste contado: pelo menos 96% dos golpes, 5% de duplos.
+
+### Configuração atual da detecção (resultado de 5 rodadas de teste em 17/11; ver `docs/TESTES.md`)
+
+Baqueta do pulso até a ponta do dedão, mão em joinha (`HIT.controlPoint = 'thumb'`, `thumbReach` 0,95).
+Modo `stroke`: velocidade medida em ≥ 30 ms; a descida começa em 0,3/s e toca se for rápida (0,8/s) ou com
+curso de 3% da tela; toca ao parar dentro de uma peça ainda não alcançada; predição de 40 ms; rearme por subida
+de 3% ou prazo de 250 ms; intervalo mínimo de 100 ms. Layout v3: chimbal 0,22 e prato 0,77 (10% maiores), bumbo
+como pad entre caixa e tom, na altura delas. A peça sob a baqueta acende (mira).
+
+Testado e descartado (não repetir sem dado novo): exigir 2 quadros de descida (perde golpes reais curtos a
+30 FPS); contar o curso desde o topo do movimento (cria duplos); bumbo mais baixo (não muda os duplos).
+
+### Pendente para 19/11 (sem código novo)
+
+- [ ] Luigi mede o PC 2 e preenche a tabela em `docs/TESTES.md` (roteiro na própria seção).
+- [ ] Aplicar no XRD, no Plano (Controle de mudanças) e no Trello o que está em
+      `docs/projeto/alteracoes-documentos-19-11.md`.
+- [ ] Ensaiar: Pages com `?debug=0`, posicionar, modo livre, metrônomo; mostrar os números do teste contado.
+
+### Próxima sessão (sexta, 20/11): começar por aqui
+
+1. Ler `docs/projeto/plano-calibracao.md` (tela de calibração, aprovada pelo grupo em 17/11) e confirmar com o
+   usuário as perguntas em aberto do fim do arquivo.
+2. Cartão 1 do plano: motor de alvos puro (horários no relógio do áudio, comparação golpe x alvo,
+   estatísticas). Uma branch e um PR por cartão; seguir a ordem do plano.
+3. Pequenos, se couber: cortar a gravação contada (`~/Downloads/airbeat-landmarks-2026-11-17-23-29-00.json`,
+   blocos tom 17–32 s, bumbo 32–47 s, caixa 47–62 s, chimbal 62–79 s) em 4 fixtures com `expected` em
+   `tests/fixtures/`; deixar o painel de debug escondido por padrão (`DEBUG.panelVisibleByDefault`).
+4. Fase 3 até 26/11, depois da calibração: estrutura das lições, `scoring`, lições 1 a 3, modo por toque ou
+   clique, testes em celular (adiados de 19/11), wireframes (atrasados).
+
+### Decisões
+
+- Tomadas: Canvas 2D (17/11); celulares na Fase 3 (17/11); calibragem com etapa de movimento (17/11).
+- Em aberto: calibração obrigatória ou opcional; ajuste por mão (ver plano).
+
+### Avisos
+
+- Bugs conhecidos: nenhum registrado. Toques duplos restantes acontecem com a baqueta parada dentro da peça
+  (dica no menu: descansar acima da peça).
+- Webcam do notebook do Luca: no máximo 30 FPS em 640x480 (o app pede 60).
+- FPS no Chrome headless sem GPU (~5) não vale como medição; com `--enable-gpu --use-gl=angle --use-angle=gl-egl`
+  ele usa a GPU real (detecção ~20 ms), mas a câmera falsa é de 20 FPS e não tem mãos.
+- Ao mesclar PRs empilhados: trocar a base do próximo para `main` antes de apagar a branch, senão o GitHub fecha o
+  PR (aconteceu com o #6 em 17/11).
