@@ -1,6 +1,6 @@
 // Desenho no canvas sobre o vídeo. toScreen é o ÚNICO lugar que converte
 // coordenadas normalizadas da câmera em pixels de tela, incluindo o espelho.
-import { HAND_STYLE, KIT_STYLE } from './config.js';
+import { HAND_STYLE, KIT_STYLE, LESSON_STYLE } from './config.js';
 import { HAND_CONNECTIONS } from './landmarks.js';
 
 /**
@@ -136,12 +136,7 @@ export function drawKit(ctx, pieces, view, lastHitAt, now, aimed = new Set()) {
     const hh = piece.hh * view.height * scale;
 
     ctx.save();
-    ctx.beginPath();
-    // roundRect falta em navegadores antigos (Safari < 16); cai para retângulo reto.
-    if (piece.shape === 'rect' && ctx.roundRect)
-      ctx.roundRect(cx - hw, cy - hh, hw * 2, hh * 2, Math.min(hw, hh) * 0.35);
-    else if (piece.shape === 'rect') ctx.rect(cx - hw, cy - hh, hw * 2, hh * 2);
-    else ctx.ellipse(cx, cy, hw, hh, 0, 0, Math.PI * 2);
+    piecePath(ctx, piece.shape, cx, cy, hw, hh);
     ctx.shadowColor = piece.color;
     ctx.shadowBlur = KIT_STYLE.glowBlur * glow;
     ctx.fillStyle = rgba(piece.color, restAlpha + (KIT_STYLE.hitFillAlpha - restAlpha) * glow);
@@ -161,6 +156,94 @@ export function drawKit(ctx, pieces, view, lastHitAt, now, aimed = new Set()) {
     ctx.fillText(piece.label, cx, cy);
     ctx.restore();
   }
+}
+
+/**
+ * Contorno de uma peça (círculo ou pad) centrado em cx, cy, em px.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {'circle' | 'rect'} shape
+ * @param {number} cx @param {number} cy @param {number} hw @param {number} hh
+ */
+function piecePath(ctx, shape, cx, cy, hw, hh) {
+  ctx.beginPath();
+  // roundRect falta em navegadores antigos (Safari < 16); cai para retângulo reto.
+  if (shape === 'rect' && ctx.roundRect)
+    ctx.roundRect(cx - hw, cy - hh, hw * 2, hh * 2, Math.min(hw, hh) * 0.35);
+  else if (shape === 'rect') ctx.rect(cx - hw, cy - hh, hw * 2, hh * 2);
+  else ctx.ellipse(cx, cy, hw, hh, 0, 0, Math.PI * 2);
+}
+
+/**
+ * Alvos das lições: um contorno da peça que desce de cima até ela e encaixa no instante
+ * do clique. Com a dica de mão (D/E) dentro, quando a lição tem.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {import('./drumKit.js').KitPiece[]} pieces
+ * @param {View} view
+ * @param {{ target: { pieceId: string, hand?: string }, progress: number }[]} items
+ * @param {number} approachRadii de quantos raios acima do centro o alvo sai
+ */
+export function drawTargets(ctx, pieces, view, items, approachRadii) {
+  ctx.save();
+  for (const { target, progress } of items) {
+    const piece = pieces.find((p) => p.id === target.pieceId);
+    if (!piece) continue;
+    const hw = piece.hw * view.width;
+    const hh = piece.hh * view.height;
+    const cx = piece.cx * view.width;
+    const cy = piece.cy * view.height - (1 - progress) * approachRadii * hh;
+    piecePath(ctx, piece.shape, cx, cy, hw, hh);
+    ctx.globalAlpha = 0.35 + 0.65 * progress;
+    ctx.lineWidth = LESSON_STYLE.targetLineWidth;
+    ctx.strokeStyle = 'rgb(0 0 0 / 0.5)';
+    ctx.stroke();
+    ctx.lineWidth = LESSON_STYLE.targetLineWidth - 3;
+    ctx.strokeStyle = piece.color;
+    ctx.stroke();
+    if (target.hand) {
+      ctx.font = LESSON_STYLE.handFont;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = 'rgb(0 0 0 / 0.6)';
+      ctx.strokeText(target.hand, cx, cy - hh * 0.45);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(target.hand, cx, cy - hh * 0.45);
+    }
+  }
+  ctx.restore();
+}
+
+/**
+ * "Perfeito!", "Bom" ou "Errou" sobre a peça, subindo e sumindo.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {import('./drumKit.js').KitPiece[]} pieces
+ * @param {View} view
+ * @param {{ pieceId: string, grade: 'perfect' | 'good' | 'miss', at: number }[]} feedback
+ * @param {number} now ms, mesmo relógio de `at`
+ * @param {number} durationMs
+ */
+export function drawFeedback(ctx, pieces, view, feedback, now, durationMs) {
+  ctx.save();
+  ctx.font = LESSON_STYLE.feedbackFont;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  for (const f of feedback) {
+    const age = now - f.at;
+    if (age < 0 || age > durationMs) continue;
+    const piece = pieces.find((p) => p.id === f.pieceId);
+    if (!piece) continue;
+    const k = age / durationMs;
+    const x = piece.cx * view.width;
+    const y = (piece.cy - piece.hh) * view.height - 8 - k * 30;
+    const { text, color } = LESSON_STYLE.grades[f.grade];
+    ctx.globalAlpha = 1 - k;
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = 'rgb(0 0 0 / 0.7)';
+    ctx.strokeText(text, x, y);
+    ctx.fillStyle = color;
+    ctx.fillText(text, x, y);
+  }
+  ctx.restore();
 }
 
 /**

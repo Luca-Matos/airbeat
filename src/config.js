@@ -391,6 +391,22 @@ export const KIT_STYLE = {
   labelFont: '600 15px system-ui, sans-serif',
 };
 
+/** Aparência dos alvos e da nota a cada golpe nas lições. */
+export const LESSON_STYLE = {
+  /** Espessura do contorno do alvo que desce, em px CSS. */
+  targetLineWidth: 8,
+  /** Fonte da dica de mão (D/E) dentro do alvo. */
+  handFont: '700 22px system-ui, sans-serif',
+  /** Fonte do "Perfeito!/Bom/Errou". */
+  feedbackFont: '800 26px system-ui, sans-serif',
+  /** Texto e cor de cada classificação. */
+  grades: {
+    perfect: { text: 'Perfeito!', color: '#3ddc97' },
+    good: { text: 'Bom', color: '#ffd23f' },
+    miss: { text: 'Errou', color: '#ff6b6b' },
+  },
+};
+
 /** Tela de posicionamento. */
 export const POSITIONING = {
   /** Tempo, em ms, com as duas mãos inteiras na tela antes de seguir sozinho para o menu. */
@@ -448,6 +464,27 @@ export const SCORING = {
   tendencyMs: 20,
 };
 
+/**
+ * Calibragem de latência (etapa de ritmo do plano da calibração): a pessoa bate junto com o
+ * metrônomo e o deslocamento é a mediana de (golpe - clique ouvido).
+ */
+export const CALIBRATION = {
+  /** Andamento, em BPM. */
+  bpm: 80,
+  /** Golpes pedidos (4 compassos de 4). */
+  beats: 16,
+  /** Peça em que a pessoa bate. */
+  piece: 'snare',
+  /** Janela, em ms, para um golpe contar para um clique. Menor que meio tempo a 80 BPM (375). */
+  windowMs: 300,
+  /** Golpes mais longe que isto da mediana, em ms, são descartados (erro isolado). */
+  outlierMs: 150,
+  /** Mínimo de golpes válidos para aceitar o resultado. */
+  minValid: 8,
+  /** Deslocamento máximo aceito, em ms. Acima disso, provavelmente a pessoa errou o tempo. */
+  maxOffsetMs: 300,
+};
+
 /** Lições e calibragem: tempo e desenho dos alvos. */
 export const LESSON = {
   /** Batidas de contagem antes do primeiro alvo (um compasso de 4). */
@@ -456,8 +493,11 @@ export const LESSON = {
   leadInMs: 800,
   /** Com quanta antecedência, em ms, o alvo aparece e começa a descer até a peça. */
   approachMs: 1600,
-  /** De que altura o alvo desce, em raios da peça acima do centro dela. */
-  approachRadii: 3,
+  /**
+   * De que altura o alvo desce, em raios da peça acima do centro dela. Com 3, o alvo da caixa
+   * passava por cima do chimbal no layout v4 e confundia.
+   */
+  approachRadii: 2,
   /** Quanto tempo, em ms, o texto "Perfeito/Bom/Errou" fica sobre a peça. */
   feedbackMs: 600,
 };

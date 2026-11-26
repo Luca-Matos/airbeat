@@ -6,6 +6,22 @@ import { LIMITER_HEADROOM, renderSound, softLimiterCurve } from './synth.js';
 /** @typedef {keyof typeof SOUNDS} SoundId */
 
 /**
+ * PURO. Converte um instante do relógio da página (performance.now, em ms) para o relógio
+ * do áudio no instante OUVIDO: um clique agendado para T é ouvido quando este valor é T.
+ * Assim golpe e clique ficam na mesma régua, com a latência de saída já descontada.
+ * @param {{ contextTime: number, performanceTime: number } | undefined} stamp getOutputTimestamp()
+ * @param {number} perfMs
+ * @param {{ currentTime: number, outputLatencySec: number, perfNow: number }} fallback sem stamp
+ * @returns {number} s
+ */
+export function heardTime(stamp, perfMs, fallback) {
+  if (stamp && stamp.performanceTime > 0) {
+    return stamp.contextTime + (perfMs - stamp.performanceTime) / 1000;
+  }
+  return fallback.currentTime - fallback.outputLatencySec + (perfMs - fallback.perfNow) / 1000;
+}
+
+/**
  * Precisa ser chamado DENTRO de um clique do usuário (botão Começar): o navegador
  * só deixa o áudio tocar depois de um gesto, e o iOS exige o resume() no mesmo evento.
  * @param {{ AudioContextClass?: typeof AudioContext }} [env] injetável para testes
@@ -44,14 +60,28 @@ export function createAudioEngine(env = {}) {
      * Toca um som agora (when = 0) ou num instante do relógio do áudio, em segundos.
      * @param {SoundId} id
      * @param {number} [when]
+     * @returns {AudioBufferSourceNode | null} para cancelar um som agendado (stop)
      */
     play(id, when = 0) {
       const buffer = buffers[id];
-      if (!buffer) return;
+      if (!buffer) return null;
       const src = ctx.createBufferSource();
       src.buffer = buffer;
       src.connect(master);
       src.start(when);
+      return src;
+    },
+    /**
+     * Instante ouvido no relógio do áudio (s) para um instante da página (ms). Ver heardTime.
+     * @param {number} perfMs
+     */
+    heardTimeAt(perfMs) {
+      const latency = (ctx.baseLatency ?? 0) + (ctx.outputLatency ?? 0);
+      return heardTime(ctx.getOutputTimestamp?.(), perfMs, {
+        currentTime: ctx.currentTime,
+        outputLatencySec: latency,
+        perfNow: performance.now(),
+      });
     },
     /** Relógio do áudio, em segundos. */
     now: () => ctx.currentTime,

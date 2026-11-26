@@ -135,3 +135,20 @@ export function tendencyText(tendencyMs, limit = SCORING.tendencyMs) {
     ? `Você costuma bater ~${ms} ms antes do clique.`
     : `Você costuma bater ~${ms} ms depois do clique.`;
 }
+
+/**
+ * Deslocamento da calibragem: mediana das diferenças golpe - clique, sem os erros isolados.
+ * @param {number[]} diffsMs
+ * @param {{ outlierMs: number, minValid: number, maxOffsetMs: number }} rules CALIBRATION
+ * @returns {{ ok: true, offsetMs: number, used: number } | { ok: false, reason: 'poucos' | 'fora', used: number }}
+ */
+export function calibrationOffset(diffsMs, rules) {
+  const first = median(diffsMs);
+  if (first === null) return { ok: false, reason: 'poucos', used: 0 };
+  const kept = diffsMs.filter((d) => Math.abs(d - first) <= rules.outlierMs);
+  if (kept.length < rules.minValid) return { ok: false, reason: 'poucos', used: kept.length };
+  const offsetMs = Math.round(/** @type {number} */ (median(kept)));
+  if (Math.abs(offsetMs) > rules.maxOffsetMs)
+    return { ok: false, reason: 'fora', used: kept.length };
+  return { ok: true, offsetMs, used: kept.length };
+}

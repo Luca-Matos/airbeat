@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { DRUM_KIT, LESSON } from '../src/config.js';
-import { countInNumber, planSession } from '../src/lessonPlan.js';
+import {
+  approachingTargets,
+  calibrationLesson,
+  countInNumber,
+  planSession,
+} from '../src/lessonPlan.js';
 import { LESSONS } from '../src/lessons/lessons.js';
 
 const pieceIds = new Set(DRUM_KIT.pieces.map((p) => p.id));
@@ -67,5 +72,32 @@ describe('planSession', () => {
       4,
       null,
     ]);
+  });
+});
+
+describe('approachingTargets', () => {
+  const targets = [0, 1, 2, 3].map((i) => ({ id: i, time: 10 + i, pieceId: 'snare' }));
+  const none = () => false;
+
+  it('mostra só os alvos dentro da antecedência, descendo de 0 a 1', () => {
+    const items = approachingTargets(targets, 10.05, 1.6, 0.1, none);
+    expect(items.map((i) => i.target.id)).toEqual([0, 1]);
+    expect(items[0].progress).toBe(1);
+    expect(items[1].progress).toBeCloseTo(1 - 0.95 / 1.6);
+  });
+
+  it('some depois da janela ou quando já foi julgado', () => {
+    expect(approachingTargets(targets, 10.2, 1, 0.1, none).map((i) => i.target.id)).toEqual([1]);
+    const items = approachingTargets(targets, 11.05, 1, 0.1, (id) => id === 1);
+    expect(items.map((i) => i.target.id)).toEqual([2]);
+  });
+});
+
+describe('calibrationLesson', () => {
+  it('pede os golpes da calibragem numa peça só, sem contagem diferente das lições', () => {
+    const plan = planSession(calibrationLesson({ bpm: 80, beats: 16, piece: 'snare' }), 0);
+    expect(plan.targets).toHaveLength(16);
+    expect(plan.secondsPerBeat).toBeCloseTo(0.75);
+    expect(new Set(plan.targets.map((t) => t.pieceId))).toEqual(new Set(['snare']));
   });
 });

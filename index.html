@@ -16,7 +16,7 @@
         <pre id="debug" class="debug" hidden></pre>
         <div id="toolbar" class="toolbar" hidden>
           <button id="to-menu" class="ghost" type="button">Menu</button>
-          <div class="metronome" role="group" aria-label="Metrônomo">
+          <div id="metro-group" class="metronome" role="group" aria-label="Metrônomo">
             <button id="metro-toggle" class="ghost" type="button" aria-pressed="false">
               Metrônomo
             </button>
@@ -62,13 +62,48 @@
         <div class="card">
           <h2>O que vamos tocar?</h2>
           <button id="menu-free" type="button">Modo livre</button>
-          <button id="menu-lessons" type="button" disabled>Lições (em breve)</button>
+          <button id="menu-lessons" type="button">Lições</button>
           <button id="menu-position" class="ghost" type="button">Posicionar de novo</button>
           <p class="note">
             Dica: entre um golpe e outro, deixe a baqueta acima da peça, sem ela acender. Parada
             dentro da peça, qualquer tremida pode tocar.
           </p>
           <p class="note">No modo livre, Esc volta para este menu.</p>
+        </div>
+      </section>
+
+      <section id="screen-lessons" class="screen overlay" hidden>
+        <div class="card">
+          <h2>Lições</h2>
+          <div id="lesson-list" class="lesson-list"></div>
+          <button id="lessons-back" class="ghost" type="button">Voltar</button>
+        </div>
+      </section>
+
+      <section id="screen-lesson" class="screen overlay" hidden>
+        <div class="card">
+          <h2 id="lesson-title"></h2>
+          <p id="lesson-goal"></p>
+          <p id="lesson-info" class="note"></p>
+          <p id="lesson-calibration" class="note warn" hidden>
+            Você ainda não calibrou: a nota pode sair atrasada.
+          </p>
+          <button id="lesson-go" type="button">Começar</button>
+          <button id="lesson-back" class="ghost" type="button">Voltar</button>
+        </div>
+      </section>
+
+      <section id="screen-result" class="screen overlay" hidden>
+        <div class="card">
+          <h2 id="result-title"></h2>
+          <p class="score"><span id="result-score"></span><small> / 100</small></p>
+          <p id="result-best" class="note" hidden>Sua melhor nota nesta lição!</p>
+          <p id="result-counts"></p>
+          <p id="result-verdict"></p>
+          <p id="result-tendency" class="note" hidden></p>
+          <button id="result-next" type="button">Próxima lição</button>
+          <button id="result-retry" class="ghost" type="button">Repetir</button>
+          <button id="result-menu" class="ghost" type="button">Menu</button>
         </div>
       </section>
 
