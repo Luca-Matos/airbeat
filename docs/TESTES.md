@@ -59,6 +59,34 @@ Para 19/11: 2 computadores (Chrome ou Edge), rodando local com `npm run dev`. Ce
 para a Fase 3 (decisão de 17/11); quando voltarem, a câmera só abre pelo link do Pages (HTTPS).
 O FPS do Chrome headless (~5) não vale como medição.
 
+## Roteiro de 26/11 (Fase 3, aplicação prévia)
+
+Antes: mesclar os PRs #17 a #21 nessa ordem (ver o fim deste roteiro) e esperar o deploy do Pages.
+Cada teste leva o número do PR que ele confere.
+
+1. **Layout v4 (#17).** PC com câmera, `?debug=1`, Modo livre, mão em joinha. Aperte **Z** e dê 20
+   golpes por peça a 80 BPM (metrônomo ligado). Anote detectados e duplos por peça (17/11: ≥ 96% e
+   5% de duplos). Ao bater na caixa e no bumbo, os pontos da mão continuam aparecendo (o pulso
+   não pode sair da imagem)? Erguer o braço para chimbal e prato cansa?
+2. **Toque sem câmera (#18).** No celular Android, pelo link do Pages: "Tocar sem câmera", Modo
+   livre. Toque com dois dedos ao mesmo tempo (caixa e chimbal). Sai som nos dois? A página rola ou
+   dá zoom? No PC, negue a câmera: a tela de erro deve oferecer "Tocar sem câmera".
+3. **Calibragem (#21).** PC com câmera: menu, "Calibrar o atraso", duas vezes seguidas. Anote os dois
+   valores (meta: diferença menor que 30 ms). Repita no modo por toque (o valor deve ser menor).
+4. **Lições (#20).** Lições 1, 2 e 3 com câmera, uma vez cada. Anote a nota e se o alvo encaixa na
+   peça junto com o clique que se ouve. Saia no meio de uma lição (Menu ou Esc): o clique tem que
+   parar na hora.
+5. **Pessoa nova (critério de pronto da Fase 3).** Alguém que nunca viu o app, sem explicação:
+   abrir o link, posicionar-se, calibrar, completar a lição 1 e ver a nota. Anote onde travou e
+   quanto tempo levou. Não ajude; só observe.
+6. **Celulares (adiados de 19/11).** 1 ou 2 Androids com Chrome, pelo link do Pages: a câmera abre?
+   FPS no painel (`?debug=1`)? Dá para tocar a lição 1? Preencha uma tabela igual à do PC 1.
+7. **Vazamento.** Entre e saia de uma lição 10 vezes. O FPS não deve cair.
+
+Ordem de mesclagem: #17 → #18 → #19 → #20 → #21 (cada um tem como base o anterior). Antes de apagar
+a branch de um PR mesclado, troque a base do próximo para `main` (`gh pr edit <n> --base main`);
+senão o GitHub fecha o PR seguinte (aconteceu com o #6 em 17/11).
+
 ## Medições de desempenho (Reunião de Controle de 19/11)
 
 Critério da etapa: medir FPS e latência em 2 computadores (celulares adiados para a Fase 3, decisão de
