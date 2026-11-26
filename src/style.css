@@ -131,6 +131,20 @@ button:focus-visible {
   background: #000;
 }
 
+/* O toque não pode rolar nem dar zoom na página: cada toque é um golpe. */
+#stage canvas {
+  touch-action: none;
+}
+
+/* Modo por toque sem câmera: só a bateria sobre fundo escuro. */
+#stage.touch-only {
+  background: radial-gradient(circle at 50% 40%, #262a36, var(--bg));
+}
+
+#stage.touch-only video {
+  display: none;
+}
+
 /* Espelho: só o vídeo é invertido. As coordenadas desenhadas por cima são
    convertidas em toScreen, nunca com outro scaleX no canvas. */
 .mirrored {

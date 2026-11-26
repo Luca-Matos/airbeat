@@ -53,3 +53,25 @@ export function startFrameLoop(video, onFrame, clock) {
     else cancelAnimationFrame(handle);
   };
 }
+
+/**
+ * Laço sem câmera (modo por toque ou clique): um quadro por requestAnimationFrame,
+ * só para desenhar a bateria e o brilho. Mesmo formato de onFrame, sem metadata.
+ * @param {(timestampMs: number) => void} onFrame
+ * @param {(nowMs: number) => number} clock
+ * @returns {() => void} stop
+ */
+export function startAnimationLoop(onFrame, clock) {
+  let running = true;
+  let handle = 0;
+  const tick = (/** @type {number} */ now) => {
+    if (!running) return;
+    onFrame(clock(now));
+    handle = requestAnimationFrame(tick);
+  };
+  handle = requestAnimationFrame(tick);
+  return () => {
+    running = false;
+    cancelAnimationFrame(handle);
+  };
+}

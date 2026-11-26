@@ -11,11 +11,12 @@ import {
   pickJsonFile,
 } from './debug.js';
 import { layoutKit, pieceAt } from './drumKit.js';
-import { createMonotonicClock, startFrameLoop } from './frameLoop.js';
+import { createMonotonicClock, startAnimationLoop, startFrameLoop } from './frameLoop.js';
 import { createHandPipeline } from './handPipeline.js';
 import { createHandTracker } from './handTracker.js';
 import { createLandmarkRecorder, parseRecording } from './landmarkRecording.js';
 import { clear, drawHands, drawKit, drawSticks, fitCanvas, toStage } from './render.js';
+import { stagePointFromClient, touchHit } from './touchInput.js';
 import { adjustTuning, defaultTuning, describeTuning } from './tuning.js';
 import { createHandsHint } from './ui/handsHint.js';
 import { createMetronomeControls } from './ui/metronomeControls.js';
@@ -60,6 +61,12 @@ window.addEventListener('keydown', (e) => {
  * @type {'off' | 'position' | 'menu' | 'free'}
  */
 let mode = 'off';
+/**
+ * De onde vêm os golpes: câmera (mãos rastreadas) ou só toque/clique, sem câmera.
+ * O toque também funciona com a câmera ligada.
+ * @type {'camera' | 'touch'}
+ */
+let input = 'camera';
 const positionHold = createPositionHold();
 
 // O relógio vive fora da sessão: ao tentar de novo, o timestamp continua crescendo.
@@ -192,6 +199,8 @@ function enterMenu() {
   metronome.stop();
   toolbar.hidden = true;
   hint.reset();
+  // Sem câmera não há o que posicionar.
+  document.getElementById('menu-position').hidden = input === 'touch';
   showScreen('menu');
   document.getElementById('menu-free').focus();
 }
@@ -202,6 +211,29 @@ function enterFreePlay() {
   audio?.resume();
   toolbar.hidden = false;
   showScreen(null);
+  if (input === 'touch') hint.message('Toque ou clique nas peças');
+}
+
+/** Plano B sem câmera: a bateria aparece sobre fundo escuro e toca por toque ou clique. */
+function startTouchOnly() {
+  ensureAudio();
+  stopSession();
+  input = 'touch';
+  stage.classList.add('touch-only');
+  stage.hidden = false;
+  stopLoop = startAnimationLoop(onFrame, clock);
+  enterMenu();
+}
+
+/** Golpes por toque ou clique numa peça, com ou sem câmera. */
+function onPointerDown(/** @type {PointerEvent} */ e) {
+  if (mode !== 'free') return;
+  const point = stagePointFromClient(e.clientX, e.clientY, canvas.getBoundingClientRect());
+  // performance.now() é o relógio dos quadros: o brilho e a nota usam a mesma régua.
+  const hit = touchHit(pieces, point, performance.now());
+  if (!hit) return;
+  e.preventDefault();
+  onHit(hit, [{ id: hit.handId, point }]);
 }
 
 /**
@@ -209,6 +241,7 @@ function enterFreePlay() {
  * @param {number} timestampMs
  */
 function readHands(timestampMs) {
+  if (input === 'touch') return { hands: [], detectMs: 0 };
   if (replay) {
     const hands = replay.handsAt(timestampMs);
     if (hands) return { hands, detectMs: 0 };
@@ -237,11 +270,13 @@ function onFrame(timestampMs, metadata) {
   const { hands, detectMs } = frame;
   if (frameCaptureTime) camToDetect.add(performance.now() - frameCaptureTime);
 
+  const fitted = fitCanvas(canvas, ctx);
   /** @type {import('./render.js').View} */
   const view = {
-    videoWidth: video.videoWidth,
-    videoHeight: video.videoHeight,
-    ...fitCanvas(canvas, ctx),
+    // Sem câmera o quadro "é" o próprio canvas (só para toStage não dividir por zero).
+    videoWidth: video.videoWidth || fitted.width,
+    videoHeight: video.videoHeight || fitted.height,
+    ...fitted,
     fit: VIDEO_FIT,
     mirrored: video.classList.contains('mirrored'),
   };
@@ -268,11 +303,11 @@ function onFrame(timestampMs, metadata) {
   if (mode === 'position') updatePosition(hands, view, timestampMs);
   if (mode === 'free') {
     metronome.update();
-    hint.update(hands.length, timestampMs);
+    if (input === 'camera') hint.update(hands.length, timestampMs);
   }
   debugPanel.update(timestampMs, detectMs, {
     hands: hands.length,
-    delegate: replay ? 'gravação' : tracker.delegate,
+    delegate: replay ? 'gravação' : input === 'touch' ? 'toque' : tracker.delegate,
     videoWidth: video.videoWidth,
     videoHeight: video.videoHeight,
     extra: [
@@ -415,11 +450,17 @@ function stopSession() {
   camera = null;
   video.srcObject = null;
   replay = null;
+  input = 'camera';
+  stage.classList.remove('touch-only');
+  hint.reset();
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   stage.hidden = true;
 }
 
 document.getElementById('start').addEventListener('click', start);
+document.getElementById('start-touch').addEventListener('click', startTouchOnly);
+document.getElementById('error-touch').addEventListener('click', startTouchOnly);
+canvas.addEventListener('pointerdown', onPointerDown);
 document.getElementById('position-skip').addEventListener('click', enterMenu);
 document.getElementById('menu-free').addEventListener('click', enterFreePlay);
 document.getElementById('menu-position').addEventListener('click', enterPosition);
