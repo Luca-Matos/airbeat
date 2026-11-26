@@ -70,3 +70,41 @@ export function countInNumber(plan, now) {
   if (now < plan.startTime || now >= plan.firstTargetTime) return null;
   return Math.floor((now - plan.startTime) / plan.secondsPerBeat) + 1;
 }
+
+/**
+ * Alvos que estão descendo até a peça agora. progress vai de 0 (acabou de aparecer) a 1
+ * (no centro da peça, no instante do clique) e fica em 1 até a janela fechar.
+ * @param {Target[]} targets
+ * @param {number} now s, instante ouvido
+ * @param {number} approachSec
+ * @param {number} lingerSec quanto o alvo fica na peça depois do clique (janela "bom")
+ * @param {(id: number) => boolean} isJudged
+ * @returns {{ target: Target, progress: number }[]}
+ */
+export function approachingTargets(targets, now, approachSec, lingerSec, isJudged) {
+  const out = [];
+  for (const target of targets) {
+    if (target.time - approachSec > now) break;
+    if (now > target.time + lingerSec || isJudged(target.id)) continue;
+    out.push({ target, progress: Math.min(1, 1 - (target.time - now) / approachSec) });
+  }
+  return out;
+}
+
+/**
+ * A lição de calibragem: um alvo por tempo, numa peça só (sem desenho de alvo; guiada pelo som).
+ * @param {{ bpm: number, beats: number, piece: string }} cal CALIBRATION
+ * @returns {import('./lessons/lessons.js').Lesson}
+ */
+export function calibrationLesson(cal) {
+  return {
+    id: 'calibracao',
+    number: 0,
+    title: 'Calibragem',
+    goal: 'Bata na caixa junto com cada clique.',
+    bpm: cal.bpm,
+    beatsPerBar: 4,
+    bars: Math.ceil(cal.beats / 4),
+    pattern: [0, 1, 2, 3].map((beat) => ({ beat, piece: cal.piece })),
+  };
+}

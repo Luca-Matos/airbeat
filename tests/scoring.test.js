@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { SCORING } from '../src/config.js';
-import { classify, createJudge, median, summarize, tendencyText, verdict } from '../src/scoring.js';
+import {
+  calibrationOffset,
+  classify,
+  createJudge,
+  median,
+  summarize,
+  tendencyText,
+  verdict,
+} from '../src/scoring.js';
 
 const target = (id, time, pieceId = 'snare') => ({ id, time, pieceId });
 
@@ -101,5 +109,26 @@ describe('summarize, verdict e tendência', () => {
     expect(tendencyText(10)).toBeNull();
     expect(tendencyText(-45)).toMatch(/antes/);
     expect(tendencyText(45)).toMatch(/45 ms depois/);
+  });
+});
+
+describe('calibrationOffset', () => {
+  const rules = { outlierMs: 150, minValid: 8, maxOffsetMs: 300 };
+
+  it('é a mediana das diferenças, ignorando erros isolados', () => {
+    const diffs = [90, 100, 110, 95, 105, 100, 98, 102, 600, -400];
+    expect(calibrationOffset(diffs, rules)).toEqual({ ok: true, offsetMs: 100, used: 8 });
+  });
+
+  it('recusa com poucos golpes válidos ou deslocamento absurdo', () => {
+    expect(calibrationOffset([], rules)).toMatchObject({ ok: false, reason: 'poucos' });
+    expect(calibrationOffset([100, 100, 100], rules)).toMatchObject({
+      ok: false,
+      reason: 'poucos',
+    });
+    expect(calibrationOffset(Array(10).fill(350), rules)).toMatchObject({
+      ok: false,
+      reason: 'fora',
+    });
   });
 });

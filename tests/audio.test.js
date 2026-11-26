@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { SOUNDS } from '../src/config.js';
-import { createAudioEngine } from '../src/audio/engine.js';
+import { createAudioEngine, heardTime } from '../src/audio/engine.js';
 import {
   biquad,
   LIMITER_HEADROOM,
@@ -169,5 +169,19 @@ describe('createAudioEngine', () => {
     const engine = createAudioEngine({ AudioContextClass: FakeContext });
     expect(engine.outputLatencyMs()).toBeCloseTo(30);
     expect(engine.now()).toBe(1.5);
+  });
+});
+
+describe('heardTime (golpe e clique na mesma régua)', () => {
+  it('usa o par de relógios do getOutputTimestamp', () => {
+    // Em performance 5000 ms está sendo ouvido o instante 2 s do áudio.
+    const stamp = { contextTime: 2, performanceTime: 5000 };
+    expect(heardTime(stamp, 5250, undefined)).toBeCloseTo(2.25);
+  });
+
+  it('sem o par, desconta a latência de saída do relógio atual', () => {
+    const fallback = { currentTime: 3, outputLatencySec: 0.05, perfNow: 1000 };
+    expect(heardTime(undefined, 1100, fallback)).toBeCloseTo(3.05);
+    expect(heardTime({ contextTime: 0, performanceTime: 0 }, 1000, fallback)).toBeCloseTo(2.95);
   });
 });

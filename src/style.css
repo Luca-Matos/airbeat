@@ -318,3 +318,46 @@ button:disabled {
   height: 100%;
   background: var(--accent);
 }
+
+.metronome[hidden] {
+  display: none;
+}
+
+.lesson-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.lesson-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  width: 100%;
+  text-align: left;
+}
+
+.lesson-item small {
+  font-weight: 400;
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+.score {
+  font-size: 3.5rem;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.score small {
+  font-size: 1.2rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.note.warn {
+  color: var(--accent);
+}

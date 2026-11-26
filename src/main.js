@@ -2,7 +2,7 @@
 import './style.css';
 import { createAudioEngine } from './audio/engine.js';
 import { CameraError, startCamera } from './camera.js';
-import { CAMERA, DEBUG, HIT, POSITIONING, VIDEO_FIT } from './config.js';
+import { CAMERA, DEBUG, HIT, LESSON, POSITIONING, SCORING, VIDEO_FIT } from './config.js';
 import {
   createDebugPanel,
   createReplaySource,
@@ -15,10 +15,24 @@ import { createMonotonicClock, startAnimationLoop, startFrameLoop } from './fram
 import { createHandPipeline } from './handPipeline.js';
 import { createHandTracker } from './handTracker.js';
 import { createLandmarkRecorder, parseRecording } from './landmarkRecording.js';
-import { clear, drawHands, drawKit, drawSticks, fitCanvas, toStage } from './render.js';
+import { approachingTargets, countInNumber } from './lessonPlan.js';
+import { LESSONS } from './lessons/lessons.js';
+import {
+  clear,
+  drawFeedback,
+  drawHands,
+  drawKit,
+  drawSticks,
+  drawTargets,
+  fitCanvas,
+  toStage,
+} from './render.js';
+import { load, save } from './storage.js';
 import { stagePointFromClient, touchHit } from './touchInput.js';
 import { adjustTuning, defaultTuning, describeTuning } from './tuning.js';
 import { createHandsHint } from './ui/handsHint.js';
+import { startLessonRun } from './ui/lessonRun.js';
+import { fillLessonIntro, fillResult, renderLessonList } from './ui/lessonScreens.js';
 import { createMetronomeControls } from './ui/metronomeControls.js';
 import {
   createPositionHold,
@@ -44,23 +58,34 @@ const debugPanel = createDebugPanel(document.getElementById('debug'), {
 const toolbar = document.getElementById('toolbar');
 const positionText = document.getElementById('position-text');
 const positionProgress = document.getElementById('position-progress');
+const metroGroup = document.getElementById('metro-group');
 const metronome = createMetronomeControls(toolbar, () => audio);
 window.addEventListener('keydown', (e) => {
-  if (e.ctrlKey || e.metaKey || e.altKey || mode !== 'free') return;
-  if (e.key === 'Escape') {
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.key === 'Escape' && isPlaying()) {
     enterMenu();
     return;
   }
+  if (mode !== 'free') return;
   // Tecla de atalho não pode disparar junto com o clique num botão focado.
   if (metronome.handleKey(e.key.toLowerCase())) e.preventDefault();
 });
 
 /**
  * Tela atual enquanto a câmera está aberta. A câmera e o rastreamento seguem ligados
- * nas três; só o modo livre desenha a bateria e toca.
- * @type {'off' | 'position' | 'menu' | 'free'}
+ * em todas; só o modo livre e a lição desenham a bateria e tocam. 'menu' vale também
+ * para a lista de lições e o resultado.
+ * @type {'off' | 'position' | 'menu' | 'free' | 'lesson'}
  */
 let mode = 'off';
+const isPlaying = () => mode === 'free' || mode === 'lesson';
+
+/** Lição escolhida e a sessão dela em andamento. */
+/** @type {import('./lessons/lessons.js').Lesson | null} */
+let lesson = null;
+/** @type {null | ReturnType<typeof startLessonRun>} */
+let run = null;
+let hintText = '';
 /**
  * De onde vêm os golpes: câmera (mãos rastreadas) ou só toque/clique, sem câmera.
  * O toque também funciona com a câmera ligada.
@@ -186,6 +211,7 @@ async function start() {
 }
 
 function enterPosition() {
+  stopRun();
   mode = 'position';
   metronome.stop();
   toolbar.hidden = true;
@@ -195,6 +221,7 @@ function enterPosition() {
 }
 
 function enterMenu() {
+  stopRun();
   mode = 'menu';
   metronome.stop();
   toolbar.hidden = true;
@@ -210,8 +237,115 @@ function enterFreePlay() {
   pipeline.reset();
   audio?.resume();
   toolbar.hidden = false;
+  metroGroup.hidden = false;
   showScreen(null);
   if (input === 'touch') hint.message('Toque ou clique nas peças');
+}
+
+/** Texto no balão do topo, sem mexer no DOM a cada quadro. */
+function setHint(/** @type {string} */ text) {
+  if (text === hintText) return;
+  hintText = text;
+  hint.message(text);
+}
+
+function stopRun() {
+  run?.stop();
+  run = null;
+  hintText = '';
+}
+
+/** @returns {number | undefined} ms, da calibragem salva para a entrada atual */
+function calibrationOffsetMs() {
+  const saved = load('calibration', /** @type {Record<string, { offsetMs: number }>} */ ({}));
+  const value = saved?.[input]?.offsetMs;
+  return Number.isFinite(value) ? value : undefined;
+}
+
+/** Tela "fora do jogo" (lista, apresentação, resultado): sem bateria nem barra. */
+function enterOverlay(/** @type {'lessons' | 'lesson' | 'result'} */ screen) {
+  stopRun();
+  mode = 'menu';
+  metronome.stop();
+  toolbar.hidden = true;
+  hint.reset();
+  showScreen(screen);
+}
+
+function enterLessons() {
+  enterOverlay('lessons');
+  renderLessonList(LESSONS, load('progress', {}), enterLessonIntro)?.focus();
+}
+
+/** @param {import('./lessons/lessons.js').Lesson} next */
+function enterLessonIntro(next) {
+  lesson = next;
+  fillLessonIntro(next, calibrationOffsetMs() !== undefined);
+  enterOverlay('lesson');
+  document.getElementById('lesson-go').focus();
+}
+
+function startLesson() {
+  if (!lesson) return;
+  if (!audio) {
+    showError('Sem áudio neste navegador: as lições precisam do metrônomo.');
+    return;
+  }
+  // Dentro do clique em Começar: o navegador deixa o áudio voltar.
+  audio.resume();
+  stopRun();
+  pipeline.reset();
+  run = startLessonRun(audio, lesson, { offsetMs: calibrationOffsetMs() ?? 0 });
+  mode = 'lesson';
+  toolbar.hidden = false;
+  metroGroup.hidden = true;
+  showScreen(null);
+}
+
+/**
+ * A cada quadro da lição: fecha os alvos vencidos, desenha os que descem e a nota de
+ * cada golpe, e mostra a contagem.
+ * @param {import('./render.js').View} view
+ */
+function updateLesson(view) {
+  if (!run || !lesson) return;
+  const perfNow = performance.now();
+  const { now, done } = run.update(perfNow);
+  const items = approachingTargets(
+    run.plan.targets,
+    now,
+    LESSON.approachMs / 1000,
+    SCORING.goodMs / 1000,
+    (id) => run.judge.resultOf(id) !== null,
+  );
+  drawTargets(ctx, pieces, view, items, LESSON.approachRadii);
+  drawFeedback(ctx, pieces, view, run.feedback, perfNow, LESSON.feedbackMs);
+  const count = countInNumber(run.plan, now);
+  if (count) setHint(`${count}…`);
+  else if (now < run.plan.startTime) setHint('Prepare-se');
+  else setHint(`Lição ${lesson.number} · ${lesson.title}`);
+  if (done) finishLesson();
+}
+
+function finishLesson() {
+  if (!run || !lesson) return;
+  const summary = run.judge.summary();
+  const best = load('progress', /** @type {Record<string, number>} */ ({}));
+  const previous = best[lesson.id];
+  const improved = previous !== undefined && summary.score > previous;
+  if (previous === undefined || improved) {
+    best[lesson.id] = summary.score;
+    save('progress', best);
+  }
+  const hasNext = LESSONS.indexOf(lesson) < LESSONS.length - 1;
+  fillResult(lesson, summary, hasNext, improved);
+  enterOverlay('result');
+  document.getElementById(hasNext ? 'result-next' : 'result-retry').focus();
+}
+
+function nextLesson() {
+  const next = LESSONS[LESSONS.indexOf(/** @type {any} */ (lesson)) + 1];
+  if (next) enterLessonIntro(next);
 }
 
 /** Plano B sem câmera: a bateria aparece sobre fundo escuro e toca por toque ou clique. */
@@ -227,7 +361,7 @@ function startTouchOnly() {
 
 /** Golpes por toque ou clique numa peça, com ou sem câmera. */
 function onPointerDown(/** @type {PointerEvent} */ e) {
-  if (mode !== 'free') return;
+  if (!isPlaying()) return;
   const point = stagePointFromClient(e.clientX, e.clientY, canvas.getBoundingClientRect());
   // performance.now() é o relógio dos quadros: o brilho e a nota usam a mesma régua.
   const hit = touchHit(pieces, point, performance.now());
@@ -289,14 +423,15 @@ function onFrame(timestampMs, metadata) {
   if (recorder.recording && !recorder.add(timestampMs, hands)) toggleRecording();
 
   const { tracked, bases, hits, states } = pipeline.process(timestampMs, hands, view);
-  // Fora do modo livre a detecção roda (mantém a velocidade em dia), mas não toca.
-  if (mode === 'free') for (const hit of hits) onHit(hit, tracked);
+  // Fora do jogo a detecção roda (mantém a velocidade em dia), mas não toca.
+  if (isPlaying()) for (const hit of hits) onHit(hit, tracked);
 
   clear(ctx, view);
-  if (mode === 'free') {
+  if (isPlaying()) {
     const aimed = new Set(tracked.map((h) => pieceAt(pieces, h.point)).filter(Boolean));
     drawKit(ctx, pieces, view, lastHitAt, timestampMs, aimed);
   }
+  if (mode === 'lesson') updateLesson(view);
   if (debugPanel.visible || mode === 'position') drawHands(ctx, hands, view);
   drawSticks(ctx, tracked, bases, view);
 
@@ -353,6 +488,7 @@ function onHit(hit, tracked) {
   if (!piece) return;
   // Tocar já, sem agendar: cada ms aqui é latência que o usuário sente.
   audio?.play(/** @type {any} */ (piece.sound));
+  if (mode === 'lesson') run?.hit(piece.id, hit.t);
   if (frameCaptureTime) camToSound.add(performance.now() - frameCaptureTime);
   lastHitAt[piece.id] = hit.t;
   const other = Object.entries(counters.lastByHand).some(
@@ -450,6 +586,7 @@ function stopSession() {
   camera = null;
   video.srcObject = null;
   replay = null;
+  stopRun();
   input = 'camera';
   stage.classList.remove('touch-only');
   hint.reset();
@@ -464,6 +601,13 @@ canvas.addEventListener('pointerdown', onPointerDown);
 document.getElementById('position-skip').addEventListener('click', enterMenu);
 document.getElementById('menu-free').addEventListener('click', enterFreePlay);
 document.getElementById('menu-position').addEventListener('click', enterPosition);
+document.getElementById('menu-lessons').addEventListener('click', enterLessons);
+document.getElementById('lessons-back').addEventListener('click', enterMenu);
+document.getElementById('lesson-go').addEventListener('click', startLesson);
+document.getElementById('lesson-back').addEventListener('click', enterLessons);
+document.getElementById('result-retry').addEventListener('click', startLesson);
+document.getElementById('result-next').addEventListener('click', nextLesson);
+document.getElementById('result-menu').addEventListener('click', enterMenu);
 document.getElementById('to-menu').addEventListener('click', enterMenu);
 document.getElementById('retry').addEventListener('click', start);
 // O navegador suspende o áudio em segundo plano; ao voltar, retoma.
