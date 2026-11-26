@@ -334,26 +334,31 @@ export const HAND_STYLE = {
  * - Gravação de precisão (23-18-46): 7 golpes no bumbo pararam 3 a 9% da tela acima do topo
  *   dele, na altura da caixa e do tom. O pad subiu para essa altura (y 0,66, alto 0,2), e o
  *   prato veio de 0,78 para 0,77 (3 golpes pararam logo à esquerda dele).
+ *
+ * Layout v4 (sugestão da professora na Reunião de 19/11): peças ~15% maiores e mais afastadas;
+ * chimbal e prato bem no alto, como numa bateria real; caixa, tom e bumbo um pouco mais baixos.
+ * Limite para descer: na joinha o pulso fica ~0,26 abaixo do dedão, então o bumbo (0,70) é o
+ * mais baixo que dá sem o pulso sair da tela (ver o teste do bumbo). Validar com 20 golpes por peça.
  * Paleta provisória (cartão "Definir paleta"): cores saturadas e bem distintas.
  */
 export const DRUM_KIT = {
   pieces: [
     // prettier-ignore
-    { id: 'hihat', label: 'Chimbal', sound: 'hihat', color: '#ffd23f', shape: 'circle', x: 0.22, y: 0.48, size: 1.1 },
+    { id: 'hihat', label: 'Chimbal', sound: 'hihat', color: '#ffd23f', shape: 'circle', x: 0.2, y: 0.3, size: 1.1 },
     // prettier-ignore
-    { id: 'snare', label: 'Caixa', sound: 'snare', color: '#ff5c5c', shape: 'circle', x: 0.37, y: 0.63 },
+    { id: 'snare', label: 'Caixa', sound: 'snare', color: '#ff5c5c', shape: 'circle', x: 0.35, y: 0.68 },
     // prettier-ignore
-    { id: 'tom', label: 'Tom', sound: 'tom', color: '#3ddc97', shape: 'circle', x: 0.63, y: 0.63 },
+    { id: 'tom', label: 'Tom', sound: 'tom', color: '#3ddc97', shape: 'circle', x: 0.65, y: 0.68 },
     // prettier-ignore
-    { id: 'crash', label: 'Prato', sound: 'crash', color: '#4dabf7', shape: 'circle', x: 0.77, y: 0.45, size: 1.1 },
+    { id: 'crash', label: 'Prato', sound: 'crash', color: '#4dabf7', shape: 'circle', x: 0.8, y: 0.3, size: 1.1 },
     // Retângulo: x/y são o centro, w/h a largura e a altura.
     // prettier-ignore
-    { id: 'kick', label: 'Bumbo', sound: 'kick', color: '#b388ff', shape: 'rect', x: 0.5, y: 0.66, w: 0.1, h: 0.2 },
+    { id: 'kick', label: 'Bumbo', sound: 'kick', color: '#b388ff', shape: 'rect', x: 0.5, y: 0.7, w: 0.12, h: 0.22 },
   ],
   /** Raio das peças redondas, em fração do menor lado do palco (fica redonda em qualquer tela). */
-  radius: 0.13,
+  radius: 0.15,
   /** Teto do raio, em fração da largura do palco, para as peças não se sobreporem em tela retrato. */
-  maxRadiusOfWidth: 0.1,
+  maxRadiusOfWidth: 0.115,
   /** Folga da zona de golpe além do desenho (1 = exatamente o desenho; 1.15 = 15% maior). */
   hitMargin: 1.15,
 };
