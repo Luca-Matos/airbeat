@@ -87,8 +87,31 @@ describe('pieceAt', () => {
   it('com a mão em joinha, bater no bumbo não tira o pulso da tela', () => {
     // O pulso fica ~0,26 da altura do palco abaixo do dedão (gravações de 17/11). O golpe
     // dispara ao entrar na peça; batendo até o meio dela, o pulso continua na tela.
-    const kick = byId.kick;
-    expect(kick.cy + 0.26).toBeLessThanOrEqual(1);
+    for (const id of ['kick', 'snare', 'tom']) {
+      expect(byId[id].cy + 0.26, id).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('chimbal e prato ficam no alto, inteiros acima da caixa e do tom (layout v4)', () => {
+    for (const [w, h] of [
+      [1280, 720],
+      [1920, 1080],
+      [640, 480],
+    ]) {
+      const p = Object.fromEntries(layoutKit(w, h).map((x) => [x.id, x]));
+      for (const high of [p.hihat, p.crash]) {
+        for (const low of [p.snare, p.tom, p.kick]) {
+          expect(high.cy + high.hh, `${high.id}/${low.id} em ${w}x${h}`).toBeLessThan(
+            low.cy - low.hh,
+          );
+        }
+      }
+    }
+  });
+
+  it('em tela 4:3 o teto pela largura não encolhe as peças', () => {
+    const [snare] = layoutKit(640, 480).filter((p) => p.id === 'snare');
+    expect(snare.hh * 480).toBeCloseTo(DRUM_KIT.radius * 480, 6);
   });
 
   it('chimbal e prato ficam ao alcance (fora dos 20% das bordas) e são maiores', () => {
