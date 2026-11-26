@@ -50,6 +50,12 @@ export function createHandsHint(el) {
       el.hidden = text === null;
       if (text) el.textContent = text;
     },
+    /** Mostra um texto fixo (modo por toque), no lugar do aviso das mãos. */
+    message(/** @type {string} */ text) {
+      shown = -2;
+      el.textContent = text;
+      el.hidden = false;
+    },
     /** Esconde o aviso (fora do jogo) e força reavaliar na próxima atualização. */
     reset() {
       shown = -1;

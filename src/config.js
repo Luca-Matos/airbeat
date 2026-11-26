@@ -417,8 +417,8 @@ export const HANDS_HINT = {
 
 /** Painel de debug (FPS, tempo de detecção). */
 export const DEBUG = {
-  /** Painel visível ao abrir. A tecla D alterna; ?debug=0 ou ?debug=1 na URL forçam. */
-  panelVisibleByDefault: true,
+  /** Painel visível ao abrir. Escondido para usuários e na apresentação; D alterna e ?debug=1 abre. */
+  panelVisibleByDefault: false,
   /** Janela, em ms, usada para calcular FPS e tempo médio de detecção. */
   statsWindowMs: 1000,
   /** Intervalo, em ms, entre atualizações do texto do painel (atualizar todo quadro pesa). */
