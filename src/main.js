@@ -2,7 +2,16 @@
 import './style.css';
 import { createAudioEngine } from './audio/engine.js';
 import { CameraError, startCamera } from './camera.js';
-import { CAMERA, DEBUG, HIT, LESSON, POSITIONING, SCORING, VIDEO_FIT } from './config.js';
+import {
+  CALIBRATION,
+  CAMERA,
+  DEBUG,
+  HIT,
+  LESSON,
+  POSITIONING,
+  SCORING,
+  VIDEO_FIT,
+} from './config.js';
 import {
   createDebugPanel,
   createReplaySource,
@@ -15,7 +24,7 @@ import { createMonotonicClock, startAnimationLoop, startFrameLoop } from './fram
 import { createHandPipeline } from './handPipeline.js';
 import { createHandTracker } from './handTracker.js';
 import { createLandmarkRecorder, parseRecording } from './landmarkRecording.js';
-import { approachingTargets, countInNumber } from './lessonPlan.js';
+import { approachingTargets, calibrationLesson, countInNumber } from './lessonPlan.js';
 import { LESSONS } from './lessons/lessons.js';
 import {
   clear,
@@ -27,7 +36,9 @@ import {
   fitCanvas,
   toStage,
 } from './render.js';
+import { calibrationOffset } from './scoring.js';
 import { load, save } from './storage.js';
+import { fillCalibrationIntro, fillCalibrationResult } from './ui/calibrationScreen.js';
 import { stagePointFromClient, touchHit } from './touchInput.js';
 import { adjustTuning, defaultTuning, describeTuning } from './tuning.js';
 import { createHandsHint } from './ui/handsHint.js';
@@ -85,7 +96,17 @@ const isPlaying = () => mode === 'free' || mode === 'lesson';
 let lesson = null;
 /** @type {null | ReturnType<typeof startLessonRun>} */
 let run = null;
+/** A sessão em andamento é uma lição ou a calibragem (mesmo motor de alvos). */
+let runKind = /** @type {'lesson' | 'calibration'} */ ('lesson');
 let hintText = '';
+/** Calibragem salva por tipo de entrada (câmera e toque têm atrasos diferentes). */
+/** @type {Record<string, { offsetMs: number, used: number, date: string }>} */
+let calibrations = load('calibration', {}) ?? {};
+/** Lição a abrir depois da calibragem (a primeira vez, a calibragem vem antes da lição). */
+/** @type {import('./lessons/lessons.js').Lesson | null} */
+let afterCalibration = null;
+/** "Pular" na calibragem vale até fechar a página. */
+let skippedCalibration = false;
 /**
  * De onde vêm os golpes: câmera (mãos rastreadas) ou só toque/clique, sem câmera.
  * O toque também funciona com a câmera ligada.
@@ -257,13 +278,12 @@ function stopRun() {
 
 /** @returns {number | undefined} ms, da calibragem salva para a entrada atual */
 function calibrationOffsetMs() {
-  const saved = load('calibration', /** @type {Record<string, { offsetMs: number }>} */ ({}));
-  const value = saved?.[input]?.offsetMs;
+  const value = calibrations[input]?.offsetMs;
   return Number.isFinite(value) ? value : undefined;
 }
 
 /** Tela "fora do jogo" (lista, apresentação, resultado): sem bateria nem barra. */
-function enterOverlay(/** @type {'lessons' | 'lesson' | 'result'} */ screen) {
+function enterOverlay(/** @type {'lessons' | 'lesson' | 'result' | 'calibration'} */ screen) {
   stopRun();
   mode = 'menu';
   metronome.stop();
@@ -279,23 +299,58 @@ function enterLessons() {
 
 /** @param {import('./lessons/lessons.js').Lesson} next */
 function enterLessonIntro(next) {
+  // Primeira vez: calibrar antes (proposta do plano da calibração), com opção de pular.
+  if (calibrationOffsetMs() === undefined && !skippedCalibration) {
+    enterCalibration(next);
+    return;
+  }
   lesson = next;
   fillLessonIntro(next, calibrationOffsetMs() !== undefined);
   enterOverlay('lesson');
   document.getElementById('lesson-go').focus();
 }
 
+/** @param {import('./lessons/lessons.js').Lesson | null} then lição a abrir depois */
+function enterCalibration(then) {
+  afterCalibration = then;
+  fillCalibrationIntro(input, calibrationOffsetMs());
+  enterOverlay('calibration');
+  document.getElementById('calibration-go').focus();
+}
+
+function leaveCalibration() {
+  if (afterCalibration) enterLessonIntro(afterCalibration);
+  else enterMenu();
+}
+
 function startLesson() {
-  if (!lesson) return;
+  if (lesson) startRun('lesson', lesson, { offsetMs: calibrationOffsetMs() ?? 0 });
+}
+
+function startCalibration() {
+  // Janela larga: a calibragem existe justamente para medir atrasos grandes.
+  startRun('calibration', calibrationLesson(CALIBRATION), {
+    offsetMs: 0,
+    windows: { ...SCORING, goodMs: CALIBRATION.windowMs },
+  });
+}
+
+/**
+ * @param {'lesson' | 'calibration'} kind
+ * @param {import('./lessons/lessons.js').Lesson} what
+ * @param {Parameters<typeof startLessonRun>[2]} options
+ */
+function startRun(kind, what, options) {
   if (!audio) {
-    showError('Sem áudio neste navegador: as lições precisam do metrônomo.');
+    showError('Sem áudio neste navegador: as lições e a calibragem precisam do metrônomo.');
     return;
   }
   // Dentro do clique em Começar: o navegador deixa o áudio voltar.
   audio.resume();
   stopRun();
   pipeline.reset();
-  run = startLessonRun(audio, lesson, { offsetMs: calibrationOffsetMs() ?? 0 });
+  run = startLessonRun(audio, what, options);
+  runKind = kind;
   mode = 'lesson';
   toolbar.hidden = false;
   metroGroup.hidden = true;
@@ -308,9 +363,14 @@ function startLesson() {
  * @param {import('./render.js').View} view
  */
 function updateLesson(view) {
-  if (!run || !lesson) return;
+  if (!run) return;
   const perfNow = performance.now();
   const { now, done } = run.update(perfNow);
+  if (runKind === 'calibration') {
+    updateCalibration(now, done);
+    return;
+  }
+  if (!lesson) return;
   const items = approachingTargets(
     run.plan.targets,
     now,
@@ -325,6 +385,34 @@ function updateLesson(view) {
   else if (now < run.plan.startTime) setHint('Prepare-se');
   else setHint(`Lição ${lesson.number} · ${lesson.title}`);
   if (done) finishLesson();
+}
+
+/**
+ * Calibragem: guiada só pelo som (sem alvos desenhados), com a contagem de golpes.
+ * @param {number} now s, instante ouvido
+ * @param {boolean} done
+ */
+function updateCalibration(now, done) {
+  const count = countInNumber(run.plan, now);
+  if (count) setHint(`${count}…`);
+  else if (now < run.plan.startTime) setHint('Prepare-se');
+  else setHint(`Bata junto com o clique · ${run.rawDiffs.length} de ${CALIBRATION.beats}`);
+  if (done) finishCalibration();
+}
+
+function finishCalibration() {
+  if (!run) return;
+  const result = calibrationOffset(run.rawDiffs, CALIBRATION);
+  if (result.ok) {
+    calibrations = {
+      ...calibrations,
+      [input]: { offsetMs: result.offsetMs, used: result.used, date: new Date().toISOString() },
+    };
+    save('calibration', calibrations);
+  }
+  fillCalibrationResult(result);
+  enterOverlay('calibration');
+  document.getElementById(result.ok ? 'calibration-continue' : 'calibration-go').focus();
 }
 
 function finishLesson() {
@@ -520,6 +608,8 @@ function debugLines(states, now) {
   lines.push(
     audio ? `áudio: ${audio.ctx.state} · saída ~${out.toFixed(0)} ms` : 'áudio: indisponível',
   );
+  const cal = calibrationOffsetMs();
+  lines.push(`calibragem (${input}): ${cal === undefined ? 'não feita' : `${cal} ms`}`);
   const cd = camToDetect.read();
   const cs = camToSound.read();
   const fmt = (/** @type {number | null} */ v) => (v === null ? '?' : v.toFixed(0));
@@ -608,6 +698,13 @@ document.getElementById('lesson-back').addEventListener('click', enterLessons);
 document.getElementById('result-retry').addEventListener('click', startLesson);
 document.getElementById('result-next').addEventListener('click', nextLesson);
 document.getElementById('result-menu').addEventListener('click', enterMenu);
+document.getElementById('menu-calibrate').addEventListener('click', () => enterCalibration(null));
+document.getElementById('calibration-go').addEventListener('click', startCalibration);
+document.getElementById('calibration-continue').addEventListener('click', leaveCalibration);
+document.getElementById('calibration-skip').addEventListener('click', () => {
+  if (calibrationOffsetMs() === undefined) skippedCalibration = true;
+  leaveCalibration();
+});
 document.getElementById('to-menu').addEventListener('click', enterMenu);
 document.getElementById('retry').addEventListener('click', start);
 // O navegador suspende o áudio em segundo plano; ao voltar, retoma.

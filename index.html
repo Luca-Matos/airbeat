@@ -63,6 +63,7 @@
           <h2>O que vamos tocar?</h2>
           <button id="menu-free" type="button">Modo livre</button>
           <button id="menu-lessons" type="button">Lições</button>
+          <button id="menu-calibrate" class="ghost" type="button">Calibrar o atraso</button>
           <button id="menu-position" class="ghost" type="button">Posicionar de novo</button>
           <p class="note">
             Dica: entre um golpe e outro, deixe a baqueta acima da peça, sem ela acender. Parada
@@ -90,6 +91,17 @@
           </p>
           <button id="lesson-go" type="button">Começar</button>
           <button id="lesson-back" class="ghost" type="button">Voltar</button>
+        </div>
+      </section>
+
+      <section id="screen-calibration" class="screen overlay" hidden>
+        <div class="card">
+          <h2>Calibragem</h2>
+          <p id="calibration-text"></p>
+          <p id="calibration-note" class="note"></p>
+          <button id="calibration-go" type="button">Começar</button>
+          <button id="calibration-continue" type="button" hidden>Continuar</button>
+          <button id="calibration-skip" class="ghost" type="button">Pular</button>
         </div>
       </section>
 
