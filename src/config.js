@@ -432,3 +432,32 @@ export const DEBUG = {
   /** Duração máxima de uma gravação, em ms, para não encher a memória se esquecerem ligada. */
   recordMaxMs: 120000,
 };
+
+/**
+ * Nota de precisão (src/scoring.js). Diferença = horário do golpe - horário em que o clique
+ * do alvo é OUVIDO - deslocamento da calibragem. Valores iniciais do XRD, ajustar nos testes.
+ */
+export const SCORING = {
+  /** Até esta diferença, em ms (para mais ou para menos), o golpe é "perfeito". */
+  perfectMs: 50,
+  /** Até esta diferença, em ms, é "bom". Além dela o golpe não conta para o alvo. */
+  goodMs: 100,
+  /** Peso de um "bom" na nota (o perfeito vale 1). */
+  goodWeight: 0.5,
+  /** Abaixo desta tendência média, em ms, não vale dizer "adiantado" ou "atrasado". */
+  tendencyMs: 20,
+};
+
+/** Lições e calibragem: tempo e desenho dos alvos. */
+export const LESSON = {
+  /** Batidas de contagem antes do primeiro alvo (um compasso de 4). */
+  countInBeats: 4,
+  /** Espera, em ms, entre apertar o botão e a primeira batida da contagem. */
+  leadInMs: 800,
+  /** Com quanta antecedência, em ms, o alvo aparece e começa a descer até a peça. */
+  approachMs: 1600,
+  /** De que altura o alvo desce, em raios da peça acima do centro dela. */
+  approachRadii: 3,
+  /** Quanto tempo, em ms, o texto "Perfeito/Bom/Errou" fica sobre a peça. */
+  feedbackMs: 600,
+};
